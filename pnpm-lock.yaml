@@ -16,6 +16,10 @@ pnpmfileChecksum: sha256-frAR5HNgVgtGTprdTnIzKdO1A6kY+c7Wz5F9JqOsjN8=
 importers:
 
   .:
+    dependencies:
+      effect:
+        specifier: ^3.19.19
+        version: 3.19.19
     devDependencies:
       '@savvy-web/changesets':
         specifier: ^0.5.1

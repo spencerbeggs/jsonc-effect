@@ -3,12 +3,36 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with
 code in this repository.
 
-## Project Status
+## Project Overview
 
-This is a **base template repository** in initial state. The design
-documentation system (`.claude/` skills and agents) is included but no design
-docs exist yet. To begin planning and documenting architecture decisions, run
-`/design-init` to create your first design document.
+Pure Effect-TS implementation of a JSONC (JSON with Comments) parser. No
+external parser dependencies — scanner, parser, AST, and formatting are all
+implemented natively in Effect. The only runtime dependency is `effect`.
+
+- **npm package**: `jsonc-effect`
+- **GitHub package**: `@spencerbeggs/jsonc-effect`
+- **Reference**: Microsoft's `jsonc-parser` (MIT) as design reference, not dependency
+- **Roadmap**: See GitHub Issue #1 for full implementation roadmap
+
+### Key Design Decisions
+
+- Pure functions (not services) — parsing is synchronous and stateless
+- `Data.TaggedError` with `*Base` exports for api-extractor DTS compatibility
+- `Schema.Class` for structural equality on tokens, nodes, options
+- String literals for token types (not numeric enums)
+- `allowTrailingComma` defaults to `true`
+- Platform independent — no `node:` imports anywhere
+
+### Source Structure
+
+```text
+src/
+├── errors.ts        # JsoncParseError, JsoncNodeNotFoundError, JsoncModificationError
+├── schemas.ts       # Token types, AST node types, parse/formatting options
+├── scanner.ts       # Lexer: string -> token stream
+├── parse.ts         # parse(), parseTree(), stripComments()
+└── index.ts         # Barrel exports
+```
 
 ## Commands
 
@@ -34,21 +58,17 @@ pnpm run build:prod        # Build production/npm output only
 ### Running a Single Test
 
 ```bash
-# Run tests for a specific package
-pnpm run test -- --filter=@spencerbeggs/ecma-module
-
 # Run a specific test file
-pnpm vitest run pkgs/ecma-module/src/index.test.ts
+pnpm vitest run src/index.test.ts
 ```
 
 ## Architecture
 
-### Monorepo Structure
+### Structure
 
 - **Package Manager**: pnpm with workspaces
 - **Build Orchestration**: Turbo for caching and task dependencies
-- **Packages**: Located in `pkgs/` directory
-- **Shared Configs**: Located in `lib/configs/`
+- **Single package**: Source in `src/`, configs in `lib/configs/`
 
 ### Package Build Pipeline
 
