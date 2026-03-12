@@ -27,11 +27,14 @@ implemented natively in Effect. The only runtime dependency is `effect`.
 
 ```text
 src/
-├── errors.ts        # JsoncParseError, JsoncNodeNotFoundError, JsoncModificationError
-├── schemas.ts       # Token types, AST node types, parse/formatting options
-├── scanner.ts       # Lexer: string -> token stream
-├── parse.ts         # parse(), parseTree(), stripComments()
-└── index.ts         # Barrel exports
+├── errors.ts              # JsoncParseError, JsoncNodeNotFoundError, JsoncModificationError
+├── schemas.ts             # Token types, AST node types, parse/formatting options
+├── scanner.ts             # Lexer: string → token stream
+├── parse.ts               # parse(), parseTree(), stripComments()
+├── schema-integration.ts  # JsoncFromString, makeJsoncFromString, makeJsoncSchema
+├── ast.ts                 # findNode, findNodeAtOffset, getNodePath, getNodeValue
+├── format.ts              # format(), modify(), applyEdits(), formatAndApply()
+└── index.ts               # Barrel exports
 ```
 
 ## Commands
