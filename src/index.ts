@@ -21,6 +21,8 @@ export {
 	JsoncParseErrorBase,
 	JsoncParseErrorDetail,
 } from "./errors.js";
+// Formatting and Modification
+export { applyEdits, format, formatAndApply, modify } from "./format.js";
 // Parser
 export { parse, parseTree, stripComments } from "./parse.js";
 export type { JsoncScanner } from "./scanner.js";

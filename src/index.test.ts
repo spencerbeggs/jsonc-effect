@@ -2,6 +2,7 @@ import { Effect, Option, Schema, pipe } from "effect";
 import { describe, expect, it } from "vitest";
 import { findNode, findNodeAtOffset, getNodePath, getNodeValue } from "./ast.js";
 import { JsoncModificationError, JsoncNodeNotFoundError, JsoncParseError, JsoncParseErrorDetail } from "./errors.js";
+import { applyEdits, format, formatAndApply, modify } from "./format.js";
 import { parse, parseTree, stripComments } from "./parse.js";
 import { createScanner } from "./scanner.js";
 import { JsoncFromString, makeJsoncFromString, makeJsoncSchema } from "./schema-integration.js";
@@ -629,5 +630,89 @@ describe("getNodeValue", () => {
 			const value = await Effect.runPromise(getNodeValue(tree.value));
 			expect(value).toEqual(parsed);
 		}
+	});
+});
+
+// ============================================================
+// Format Tests
+// ============================================================
+
+describe("format", () => {
+	it("produces formatting edits for compact JSON", async () => {
+		const input = '{"a":1,"b":2}';
+		const edits = await Effect.runPromise(format(input));
+		expect(edits.length).toBeGreaterThan(0);
+	});
+
+	it("formatAndApply produces formatted output", async () => {
+		const input = '{"a":1,"b":2}';
+		const result = await Effect.runPromise(formatAndApply(input));
+		expect(result).toContain("\n");
+		// Verify the result is valid JSON
+		const parsed = JSON.parse(result);
+		expect(parsed).toEqual({ a: 1, b: 2 });
+	});
+
+	it("respects tab-based indentation", async () => {
+		const input = '{"a":1}';
+		const result = await Effect.runPromise(formatAndApply(input, undefined, { insertSpaces: false }));
+		expect(result).toContain("\t");
+	});
+
+	it("preserves comments during formatting", async () => {
+		const input = '{// comment\n"a":1}';
+		const result = await Effect.runPromise(formatAndApply(input));
+		expect(result).toContain("// comment");
+	});
+});
+
+describe("applyEdits", () => {
+	it("applies edits correctly", async () => {
+		const text = "hello world";
+		const edits = [{ offset: 5, length: 1, content: "_" }];
+		const result = await Effect.runPromise(applyEdits(text, edits));
+		expect(result).toBe("hello_world");
+	});
+
+	it("works with pipe (data-last)", async () => {
+		const text = "abc";
+		const edits = [{ offset: 1, length: 1, content: "B" }];
+		const result = await Effect.runPromise(pipe(text, applyEdits(edits)));
+		expect(result).toBe("aBc");
+	});
+});
+
+describe("modify", () => {
+	it("replaces existing property value", async () => {
+		const input = '{ "key": 42 }';
+		const edits = await Effect.runPromise(modify(input, ["key"], 100));
+		const result = await Effect.runPromise(applyEdits(input, edits));
+		const parsed = JSON.parse(result);
+		expect(parsed.key).toBe(100);
+	});
+
+	it("inserts new property into object", async () => {
+		const input = '{ "a": 1 }';
+		const edits = await Effect.runPromise(modify(input, ["b"], 2));
+		const result = await Effect.runPromise(applyEdits(input, edits));
+		const parsed = JSON.parse(result);
+		expect(parsed.b).toBe(2);
+	});
+
+	it("replaces entire document with empty path", async () => {
+		const input = '{ "old": true }';
+		const edits = await Effect.runPromise(modify(input, [], { new: true }));
+		const result = await Effect.runPromise(applyEdits(input, edits));
+		const parsed = JSON.parse(result);
+		expect(parsed).toEqual({ new: true });
+	});
+
+	it("modify + applyEdits pipeline", async () => {
+		const input = '{ "version": 1 }';
+		const result = await Effect.runPromise(
+			modify(input, ["version"], 2).pipe(Effect.flatMap((edits) => applyEdits(input, edits))),
+		);
+		const parsed = JSON.parse(result);
+		expect(parsed.version).toBe(2);
 	});
 });
