@@ -22,9 +22,10 @@ export {
 // Parser
 export { parse, parseTree, stripComments } from "./parse.js";
 export type { JsoncScanner } from "./scanner.js";
-
 // Scanner
 export { createScanner } from "./scanner.js";
+// Schema Integration
+export { JsoncFromString, makeJsoncFromString, makeJsoncSchema } from "./schema-integration.js";
 export type {
 	JsoncNodeType,
 	JsoncPath,

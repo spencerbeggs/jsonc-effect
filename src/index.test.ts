@@ -1,8 +1,9 @@
-import { Effect, Option } from "effect";
+import { Effect, Option, Schema } from "effect";
 import { describe, expect, it } from "vitest";
 import { JsoncModificationError, JsoncNodeNotFoundError, JsoncParseError, JsoncParseErrorDetail } from "./errors.js";
 import { parse, parseTree, stripComments } from "./parse.js";
 import { createScanner } from "./scanner.js";
+import { JsoncFromString, makeJsoncFromString, makeJsoncSchema } from "./schema-integration.js";
 import { JsoncEdit, JsoncFormattingOptions, JsoncParseOptions, JsoncRange } from "./schemas.js";
 
 // ============================================================
@@ -378,5 +379,115 @@ describe("stripComments", () => {
 		const input = '{ "key": 42 }';
 		const result = await Effect.runPromise(stripComments(input));
 		expect(result).toBe(input);
+	});
+});
+
+// ============================================================
+// Schema Integration Tests
+// ============================================================
+
+describe("JsoncFromString", () => {
+	it("decodes valid JSONC to unknown", () => {
+		const result = Schema.decodeUnknownSync(JsoncFromString)('{ "key": 42 }');
+		expect(result).toEqual({ key: 42 });
+	});
+
+	it("decodes JSONC with comments", () => {
+		const result = Schema.decodeUnknownSync(JsoncFromString)('{\n  // comment\n  "key": true\n}');
+		expect(result).toEqual({ key: true });
+	});
+
+	it("decodes JSONC with trailing comma", () => {
+		const result = Schema.decodeUnknownSync(JsoncFromString)('{ "a": 1, }');
+		expect(result).toEqual({ a: 1 });
+	});
+
+	it("fails with ParseError on invalid JSONC", () => {
+		expect(() => Schema.decodeUnknownSync(JsoncFromString)("{ invalid }")).toThrow();
+	});
+
+	it("encodes unknown to JSON string", () => {
+		const result = Schema.encodeUnknownSync(JsoncFromString)({ key: 42 });
+		expect(JSON.parse(result)).toEqual({ key: 42 });
+	});
+});
+
+describe("makeJsoncFromString", () => {
+	it("respects disallowComments option", () => {
+		const strict = makeJsoncFromString({ disallowComments: true });
+		expect(() => Schema.decodeUnknownSync(strict)("// comment\n42")).toThrow();
+	});
+
+	it("respects allowTrailingComma: false", () => {
+		const strict = makeJsoncFromString({ allowTrailingComma: false });
+		expect(() => Schema.decodeUnknownSync(strict)("[1, 2,]")).toThrow();
+	});
+});
+
+describe("makeJsoncSchema", () => {
+	const MyConfig = Schema.Struct({
+		name: Schema.String,
+		version: Schema.Number,
+	});
+
+	it("parses JSONC and validates against target schema", () => {
+		const ConfigFromJsonc = makeJsoncSchema(MyConfig);
+		const result = Schema.decodeUnknownSync(ConfigFromJsonc)('{ "name": "test", "version": 1 }');
+		expect(result).toEqual({ name: "test", version: 1 });
+	});
+
+	it("parses JSONC with comments and validates", () => {
+		const ConfigFromJsonc = makeJsoncSchema(MyConfig);
+		const result = Schema.decodeUnknownSync(ConfigFromJsonc)('{\n  // app name\n  "name": "myapp",\n  "version": 2\n}');
+		expect(result).toEqual({ name: "myapp", version: 2 });
+	});
+
+	it("fails when JSONC is valid but doesn't match schema", () => {
+		const ConfigFromJsonc = makeJsoncSchema(MyConfig);
+		expect(() => Schema.decodeUnknownSync(ConfigFromJsonc)('{ "name": 123 }')).toThrow();
+	});
+
+	it("fails on invalid JSONC", () => {
+		const ConfigFromJsonc = makeJsoncSchema(MyConfig);
+		expect(() => Schema.decodeUnknownSync(ConfigFromJsonc)("{ not valid }")).toThrow();
+	});
+
+	it("works with nested schemas", () => {
+		const Nested = Schema.Struct({
+			db: Schema.Struct({
+				host: Schema.String,
+				port: Schema.Number,
+			}),
+		});
+		const NestedFromJsonc = makeJsoncSchema(Nested);
+		const result = Schema.decodeUnknownSync(NestedFromJsonc)('{ "db": { "host": "localhost", "port": 5432 } }');
+		expect(result).toEqual({ db: { host: "localhost", port: 5432 } });
+	});
+
+	it("round-trips: decode then encode preserves data", () => {
+		const ConfigFromJsonc = makeJsoncSchema(MyConfig);
+		const input = '{ "name": "test", "version": 1 }';
+		const decoded = Schema.decodeUnknownSync(ConfigFromJsonc)(input);
+		const encoded = Schema.encodeSync(ConfigFromJsonc)(decoded);
+		const reDecoded = Schema.decodeUnknownSync(ConfigFromJsonc)(encoded);
+		expect(reDecoded).toEqual(decoded);
+	});
+
+	it("parses realistic bun.lock snippet", () => {
+		const BunLockSnippet = Schema.Struct({
+			lockfileVersion: Schema.Number,
+			packages: Schema.Record({ key: Schema.String, value: Schema.Unknown }),
+		});
+		const BunLockFromJsonc = makeJsoncSchema(BunLockSnippet);
+		const input = `{
+  // bun.lock lockfile
+  "lockfileVersion": 1,
+  "packages": {
+    "effect": "3.19.19",
+  }
+}`;
+		const result = Schema.decodeUnknownSync(BunLockFromJsonc)(input);
+		expect(result.lockfileVersion).toBe(1);
+		expect(result.packages).toEqual({ effect: "3.19.19" });
 	});
 });
