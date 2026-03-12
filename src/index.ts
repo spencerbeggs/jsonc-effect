@@ -8,6 +8,8 @@
  * @packageDocumentation
  */
 
+// AST Navigation
+export { findNode, findNodeAtOffset, getNodePath, getNodeValue } from "./ast.js";
 export type { JsoncParseErrorCode } from "./errors.js";
 // Errors
 export {
@@ -24,6 +26,7 @@ export { parse, parseTree, stripComments } from "./parse.js";
 export type { JsoncScanner } from "./scanner.js";
 // Scanner
 export { createScanner } from "./scanner.js";
+
 // Schema Integration
 export { JsoncFromString, makeJsoncFromString, makeJsoncSchema } from "./schema-integration.js";
 export type {

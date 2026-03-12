@@ -1,5 +1,6 @@
-import { Effect, Option, Schema } from "effect";
+import { Effect, Option, Schema, pipe } from "effect";
 import { describe, expect, it } from "vitest";
+import { findNode, findNodeAtOffset, getNodePath, getNodeValue } from "./ast.js";
 import { JsoncModificationError, JsoncNodeNotFoundError, JsoncParseError, JsoncParseErrorDetail } from "./errors.js";
 import { parse, parseTree, stripComments } from "./parse.js";
 import { createScanner } from "./scanner.js";
@@ -489,5 +490,144 @@ describe("makeJsoncSchema", () => {
 		const result = Schema.decodeUnknownSync(BunLockFromJsonc)(input);
 		expect(result.lockfileVersion).toBe(1);
 		expect(result.packages).toEqual({ effect: "3.19.19" });
+	});
+});
+
+// ============================================================
+// AST Navigation Tests
+// ============================================================
+
+describe("findNode", () => {
+	const jsonc = '{ "a": { "b": 42 }, "arr": [1, 2, 3] }';
+
+	it("finds nested property by path", async () => {
+		const tree = await Effect.runPromise(parseTree(jsonc));
+		expect(Option.isSome(tree)).toBe(true);
+		if (Option.isSome(tree)) {
+			const node = await Effect.runPromise(findNode(tree.value, ["a", "b"]));
+			expect(Option.isSome(node)).toBe(true);
+			if (Option.isSome(node)) {
+				expect(node.value.type).toBe("number");
+				expect(node.value.value).toBe(42);
+			}
+		}
+	});
+
+	it("finds array element by index", async () => {
+		const tree = await Effect.runPromise(parseTree(jsonc));
+		expect(Option.isSome(tree)).toBe(true);
+		if (Option.isSome(tree)) {
+			const node = await Effect.runPromise(findNode(tree.value, ["arr", 1]));
+			expect(Option.isSome(node)).toBe(true);
+			if (Option.isSome(node)) {
+				expect(node.value.type).toBe("number");
+				expect(node.value.value).toBe(2);
+			}
+		}
+	});
+
+	it("returns Option.none for missing path", async () => {
+		const tree = await Effect.runPromise(parseTree(jsonc));
+		expect(Option.isSome(tree)).toBe(true);
+		if (Option.isSome(tree)) {
+			const node = await Effect.runPromise(findNode(tree.value, ["missing"]));
+			expect(Option.isNone(node)).toBe(true);
+		}
+	});
+
+	it("works with pipe (data-last)", async () => {
+		const tree = await Effect.runPromise(parseTree(jsonc));
+		expect(Option.isSome(tree)).toBe(true);
+		if (Option.isSome(tree)) {
+			const node = await Effect.runPromise(pipe(tree.value, findNode(["a"])));
+			expect(Option.isSome(node)).toBe(true);
+			if (Option.isSome(node)) {
+				expect(node.value.type).toBe("object");
+			}
+		}
+	});
+});
+
+describe("findNodeAtOffset", () => {
+	it("finds node at specific offset", async () => {
+		const text = '{ "key": 42 }';
+		const tree = await Effect.runPromise(parseTree(text));
+		expect(Option.isSome(tree)).toBe(true);
+		if (Option.isSome(tree)) {
+			// offset 9 is within "42"
+			const node = await Effect.runPromise(findNodeAtOffset(tree.value, 9));
+			expect(Option.isSome(node)).toBe(true);
+			if (Option.isSome(node)) {
+				expect(node.value.type).toBe("number");
+				expect(node.value.value).toBe(42);
+			}
+		}
+	});
+
+	it("returns Option.none for out-of-range offset", async () => {
+		const tree = await Effect.runPromise(parseTree("42"));
+		expect(Option.isSome(tree)).toBe(true);
+		if (Option.isSome(tree)) {
+			const node = await Effect.runPromise(findNodeAtOffset(tree.value, 100));
+			expect(Option.isNone(node)).toBe(true);
+		}
+	});
+});
+
+describe("getNodePath", () => {
+	it("returns correct path for nested node", async () => {
+		const text = '{ "a": { "b": 42 } }';
+		const tree = await Effect.runPromise(parseTree(text));
+		expect(Option.isSome(tree)).toBe(true);
+		if (Option.isSome(tree)) {
+			// offset 14 is within "42"
+			const path = await Effect.runPromise(getNodePath(tree.value, 14));
+			expect(Option.isSome(path)).toBe(true);
+			if (Option.isSome(path)) {
+				expect(path.value).toEqual(["a", "b"]);
+			}
+		}
+	});
+});
+
+describe("getNodeValue", () => {
+	it("reconstructs object from AST", async () => {
+		const text = '{ "a": 1, "b": "two" }';
+		const tree = await Effect.runPromise(parseTree(text));
+		expect(Option.isSome(tree)).toBe(true);
+		if (Option.isSome(tree)) {
+			const value = await Effect.runPromise(getNodeValue(tree.value));
+			expect(value).toEqual({ a: 1, b: "two" });
+		}
+	});
+
+	it("reconstructs array from AST", async () => {
+		const tree = await Effect.runPromise(parseTree("[1, 2, 3]"));
+		expect(Option.isSome(tree)).toBe(true);
+		if (Option.isSome(tree)) {
+			const value = await Effect.runPromise(getNodeValue(tree.value));
+			expect(value).toEqual([1, 2, 3]);
+		}
+	});
+
+	it("handles all value types", async () => {
+		const text = '{ "s": "str", "n": 42, "b": true, "f": false, "z": null }';
+		const tree = await Effect.runPromise(parseTree(text));
+		expect(Option.isSome(tree)).toBe(true);
+		if (Option.isSome(tree)) {
+			const value = await Effect.runPromise(getNodeValue(tree.value));
+			expect(value).toEqual({ s: "str", n: 42, b: true, f: false, z: null });
+		}
+	});
+
+	it("round-trips with parse", async () => {
+		const text = '{ "config": { "port": 3000, "hosts": ["a", "b"] } }';
+		const tree = await Effect.runPromise(parseTree(text));
+		const parsed = await Effect.runPromise(parse(text));
+		expect(Option.isSome(tree)).toBe(true);
+		if (Option.isSome(tree)) {
+			const value = await Effect.runPromise(getNodeValue(tree.value));
+			expect(value).toEqual(parsed);
+		}
 	});
 });
