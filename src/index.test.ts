@@ -1154,6 +1154,83 @@ describe("scanner — edge cases", () => {
 		const kind = scanner.scan();
 		expect(kind).toBe("OpenBrace");
 	});
+
+	it("scans leading zeros as two separate tokens", () => {
+		const scanner = createScanner("01", true);
+		const first = scanner.scan();
+		expect(first).toBe("Number");
+		expect(scanner.getTokenValue()).toBe("0");
+		const second = scanner.scan();
+		expect(second).toBe("Number");
+		expect(scanner.getTokenValue()).toBe("1");
+	});
+
+	it("scans True as Unknown (case-sensitive keywords)", () => {
+		const scanner = createScanner("True", true);
+		const kind = scanner.scan();
+		expect(kind).toBe("Unknown");
+	});
+
+	it("scans scientific notation numbers", () => {
+		const scanner = createScanner("90E+123", true);
+		const kind = scanner.scan();
+		expect(kind).toBe("Number");
+		expect(scanner.getTokenValue()).toBe("90E+123");
+	});
+
+	it("scans negative scientific notation", () => {
+		const scanner = createScanner("90e-123", true);
+		const kind = scanner.scan();
+		expect(kind).toBe("Number");
+		expect(scanner.getTokenValue()).toBe("90e-123");
+	});
+
+	it("handles all string escape sequences including backspace and formfeed", () => {
+		const scanner = createScanner('"\\b\\f"', true);
+		scanner.scan();
+		expect(scanner.getTokenValue()).toContain("\b");
+		expect(scanner.getTokenValue()).toContain("\f");
+	});
+
+	it("handles unicode escape to produce correct character", () => {
+		const scanner = createScanner('"\\u00DC"', true);
+		scanner.scan();
+		expect(scanner.getTokenValue()).toBe("Ü");
+	});
+
+	it("scans line and block comments", () => {
+		const scanner = createScanner("// line\n/* block */", false);
+		const t1 = scanner.scan();
+		expect(t1).toBe("LineComment");
+		scanner.scan(); // linebreak
+		const t2 = scanner.scan();
+		expect(t2).toBe("BlockComment");
+	});
+
+	it("tracks line and character positions", () => {
+		const scanner = createScanner('{\n  "a": 1\n}', false);
+		// scan past the opening brace and newline to get to "a"
+		scanner.scan(); // {
+		scanner.scan(); // \n
+		scanner.scan(); // spaces (trivia)
+		scanner.scan(); // "a"
+		expect(scanner.getTokenStartLine()).toBe(1);
+		expect(scanner.getTokenStartCharacter()).toBe(2);
+	});
+
+	it("scans decimal number 0.1", () => {
+		const scanner = createScanner("0.1", true);
+		const kind = scanner.scan();
+		expect(kind).toBe("Number");
+		expect(scanner.getTokenValue()).toBe("0.1");
+	});
+
+	it("scans negative decimal -0.1", () => {
+		const scanner = createScanner("-0.1", true);
+		const kind = scanner.scan();
+		expect(kind).toBe("Number");
+		expect(scanner.getTokenValue()).toBe("-0.1");
+	});
 });
 
 // ============================================================
@@ -1373,5 +1450,157 @@ describe("ast — edge cases", () => {
 			const result = await Effect.runPromise(findNode(tree.value, [5]));
 			expect(Option.isNone(result)).toBe(true);
 		}
+	});
+});
+
+// ============================================================
+// Microsoft jsonc-parser parity tests
+// ============================================================
+
+describe("Microsoft parity — parse values", () => {
+	it("parses empty object", async () => {
+		expect(await Effect.runPromise(parse("{}"))).toEqual({});
+	});
+
+	it("parses empty array", async () => {
+		expect(await Effect.runPromise(parse("[]"))).toEqual([]);
+	});
+
+	it("parses property with empty key", async () => {
+		const result = await Effect.runPromise(parse('{ "": true }'));
+		expect(result).toEqual({ "": true });
+	});
+
+	it("parses comments within object values", async () => {
+		const result = await Effect.runPromise(parse('{ "foo": /*hello*/true }'));
+		expect(result).toEqual({ foo: true });
+	});
+
+	it("parses scientific notation 23e3", async () => {
+		expect(await Effect.runPromise(parse("23e3"))).toBe(23e3);
+	});
+
+	it("parses scientific notation 1.2E+3", async () => {
+		expect(await Effect.runPromise(parse("1.2E+3"))).toBe(1.2e3);
+	});
+
+	it("parses scientific notation 1.2E-3", async () => {
+		expect(await Effect.runPromise(parse("1.2E-3"))).toBe(1.2e-3);
+	});
+
+	it("parses value with trailing comment", async () => {
+		expect(await Effect.runPromise(parse("1.2E-3 // comment"))).toBe(1.2e-3);
+	});
+
+	it("parses nested arrays", async () => {
+		const result = await Effect.runPromise(parse("[[1, 2], [3, 4]]"));
+		expect(result).toEqual([
+			[1, 2],
+			[3, 4],
+		]);
+	});
+
+	it("parses nested objects", async () => {
+		const result = await Effect.runPromise(parse('{ "a": { "b": { "c": true } } }'));
+		expect(result).toEqual({ a: { b: { c: true } } });
+	});
+
+	it("parses mixed nested structures", async () => {
+		const result = await Effect.runPromise(parse('{ "items": [1, "two", { "three": 3 }] }'));
+		expect(result).toEqual({ items: [1, "two", { three: 3 }] });
+	});
+});
+
+describe("Microsoft parity — error recovery", () => {
+	it("recovers from missing colon", async () => {
+		const result = await Effect.runPromise(Effect.either(parse('{ "bar" 8 }')));
+		// Should produce an error but still parse what it can
+		expect(result._tag).toBe("Left");
+	});
+
+	it("recovers from trailing comma in object (disallowed)", async () => {
+		const result = await Effect.runPromise(Effect.either(parse('{ "key": [], }', { allowTrailingComma: false })));
+		if (result._tag === "Left") {
+			expect(result.left.errors.length).toBeGreaterThan(0);
+		}
+	});
+
+	it("recovers from extra data after value", async () => {
+		const result = await Effect.runPromise(Effect.either(parse("1 2 3")));
+		if (result._tag === "Left") {
+			expect(result.left.errors.some((e) => e.code === "EndOfFileExpected")).toBe(true);
+		}
+	});
+});
+
+describe("Microsoft parity — parseTree structure", () => {
+	it("produces correct AST for simple object", async () => {
+		const result = await Effect.runPromise(parseTree('{ "key": 42 }'));
+		expect(Option.isSome(result)).toBe(true);
+		if (Option.isSome(result)) {
+			const root = result.value;
+			expect(root.type).toBe("object");
+			expect(root.children).toBeDefined();
+			expect(root.children?.length).toBe(1);
+			const prop = root.children?.[0];
+			expect(prop?.type).toBe("property");
+			expect(prop?.children?.length).toBe(2);
+			expect(prop?.children?.[0].type).toBe("string");
+			expect(prop?.children?.[0].value).toBe("key");
+			expect(prop?.children?.[1].type).toBe("number");
+			expect(prop?.children?.[1].value).toBe(42);
+		}
+	});
+
+	it("produces correct AST for array", async () => {
+		const result = await Effect.runPromise(parseTree("[1, true, null]"));
+		expect(Option.isSome(result)).toBe(true);
+		if (Option.isSome(result)) {
+			const root = result.value;
+			expect(root.type).toBe("array");
+			expect(root.children?.length).toBe(3);
+			expect(root.children?.[0].value).toBe(1);
+			expect(root.children?.[1].value).toBe(true);
+			expect(root.children?.[2].value).toBe(null);
+		}
+	});
+
+	it("property nodes have colonOffset", async () => {
+		const result = await Effect.runPromise(parseTree('{ "key": 1 }'));
+		if (Option.isSome(result)) {
+			const prop = result.value.children?.[0];
+			expect(prop?.colonOffset).toBeDefined();
+			expect(typeof prop?.colonOffset).toBe("number");
+		}
+	});
+
+	it("node offsets and lengths are correct", async () => {
+		const input = '{"a":1}';
+		const result = await Effect.runPromise(parseTree(input));
+		if (Option.isSome(result)) {
+			const root = result.value;
+			expect(root.offset).toBe(0);
+			expect(root.length).toBe(input.length);
+		}
+	});
+});
+
+describe("Microsoft parity — stripComments", () => {
+	it("removes line comments", async () => {
+		const result = await Effect.runPromise(stripComments('{ "a": 1 } // comment'));
+		expect(result.trim()).toBe('{ "a": 1 }');
+	});
+
+	it("removes block comments", async () => {
+		const result = await Effect.runPromise(stripComments('{ /* comment */ "a": 1 }'));
+		expect(result).toContain('"a": 1');
+		expect(result).not.toContain("comment");
+	});
+
+	it("replaces comments with spaces when replaceCh specified", async () => {
+		const result = await Effect.runPromise(stripComments("42 // comment", " "));
+		expect(result.startsWith("42")).toBe(true);
+		// The comment should be replaced with spaces, preserving length
+		expect(result.length).toBe("42 // comment".length);
 	});
 });
