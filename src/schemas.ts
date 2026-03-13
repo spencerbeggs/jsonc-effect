@@ -42,6 +42,7 @@ export const JsoncScanError = Schema.Literal(
 	"InvalidUnicode",
 	"InvalidEscapeCharacter",
 	"InvalidCharacter",
+	"InvalidSymbol",
 );
 export type JsoncScanError = Schema.Schema.Type<typeof JsoncScanError>;
 

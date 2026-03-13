@@ -348,7 +348,7 @@ export const createScanner = (text: string, ignoreTrivia = false): JsoncScanner 
 				pos++;
 				tokenValue = "-";
 				token = "Unknown";
-				tokenError = "InvalidSymbol" as JsoncScanError;
+				tokenError = "InvalidSymbol";
 				return token;
 			default:
 				// numbers
@@ -383,7 +383,7 @@ export const createScanner = (text: string, ignoreTrivia = false): JsoncScanner 
 							return token;
 						default:
 							token = "Unknown";
-							tokenError = "InvalidSymbol" as JsoncScanError;
+							tokenError = "InvalidSymbol";
 							return token;
 					}
 				}

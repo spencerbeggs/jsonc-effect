@@ -284,7 +284,7 @@ function parseInternal(text: string, options: Partial<JsoncParseOptions>, buildT
 				handleError("CommaExpected");
 			}
 			const value = parseValue();
-			if (value === undefined && token() !== "Null") {
+			if (value === undefined) {
 				handleError("ValueExpected", [], ["CloseBracket", "Comma"]);
 			} else {
 				arr.push(value);
@@ -330,7 +330,7 @@ function parseInternal(text: string, options: Partial<JsoncParseOptions>, buildT
 			}
 			scanNext();
 			const value = parseValue();
-			if (value === undefined && token() !== "Null") {
+			if (value === undefined) {
 				handleError("ValueExpected", [], ["CloseBrace", "Comma"]);
 			} else {
 				obj[key] = value;
@@ -544,7 +544,7 @@ function parseInternal(text: string, options: Partial<JsoncParseOptions>, buildT
 	if (token() !== "EOF") {
 		handleError("EndOfFileExpected");
 	}
-	if (value === undefined && !allowEmptyContent && token() !== "Null") {
+	if (value === undefined && !allowEmptyContent) {
 		handleError("ValueExpected");
 	}
 	return { value, root: undefined, errors };

@@ -333,7 +333,10 @@ function modifyImpl(
 								let removeStart = valueStart;
 								let removeEnd = valueEnd;
 
-								// Find the key start
+								// Find the key start by searching backwards from the value.
+								// Note: this assumes the segment does not contain unescaped
+								// double-quote characters. Property names with embedded quotes
+								// (e.g. 'foo"bar') would need the segment escaped before search.
 								const keySearchArea = text.substring(0, valueStart);
 								const keyStart = keySearchArea.lastIndexOf(`"${segment}"`);
 								if (keyStart >= 0) {
