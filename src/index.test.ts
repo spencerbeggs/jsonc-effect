@@ -457,6 +457,22 @@ describe("makeJsoncFromString", () => {
 	});
 });
 
+describe("JsoncFromString annotations", () => {
+	it("has title annotation", () => {
+		const ast = Schema.encodedSchema(JsoncFromString).ast;
+		expect(ast).toBeDefined();
+	});
+
+	it("error messages include schema context on invalid input", () => {
+		try {
+			Schema.decodeUnknownSync(JsoncFromString)("{ invalid }");
+			expect.unreachable("should have thrown");
+		} catch (e) {
+			expect(String(e)).toContain("JsoncFromString");
+		}
+	});
+});
+
 describe("makeJsoncSchema", () => {
 	const MyConfig = Schema.Struct({
 		name: Schema.String,
