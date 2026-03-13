@@ -12,30 +12,28 @@ implemented natively in Effect. The only runtime dependency is `effect`.
 - **npm package**: `jsonc-effect`
 - **GitHub package**: `@spencerbeggs/jsonc-effect`
 - **Reference**: Microsoft's `jsonc-parser` (MIT) as design reference, not dependency
-- **Roadmap**: GitHub Issues #1-#9 (all closed)
 
 ## Project Status
 
-All implementation phases complete. GitHub Issues #1-#9 all closed.
-Polish improvements done: lazy streaming, Function.dual, typed errors,
-JSDoc examples, README enhancements.
+All implementation phases complete. Polish improvements done: lazy streaming,
+Function.dual, typed errors, JSDoc examples, README enhancements.
 
-- **Tests**: 207 passing
-- **Coverage**: ~89% statements, ~82% branches, ~99% functions
-- **Branch**: `feat/implementation` (pushed, ready for PR)
+## Design
 
-For architecture and design details:
-@./.claude/design/jsonc-effect/architecture.md
+**For architecture and design details:**
+-> `@./.claude/design/jsonc-effect/architecture.md`
+Load when working on system architecture, module structure, or major refactoring.
 
-Component design docs:
-@./.claude/design/jsonc-effect/scanner.md
-@./.claude/design/jsonc-effect/parser.md
-@./.claude/design/jsonc-effect/schema-integration.md
-@./.claude/design/jsonc-effect/ast-navigation.md
-@./.claude/design/jsonc-effect/visitor.md
-@./.claude/design/jsonc-effect/formatting.md
-@./.claude/design/jsonc-effect/error-types.md
-@./.claude/design/jsonc-effect/effect-patterns.md
+**For component-specific design:**
+-> `@./.claude/design/jsonc-effect/scanner.md` — Lexer/tokenizer internals
+-> `@./.claude/design/jsonc-effect/parser.md` — Recursive descent parser
+-> `@./.claude/design/jsonc-effect/schema-integration.md` — Schema.transformOrFail pipelines
+-> `@./.claude/design/jsonc-effect/ast-navigation.md` — AST traversal utilities
+-> `@./.claude/design/jsonc-effect/visitor.md` — SAX-style event stream
+-> `@./.claude/design/jsonc-effect/formatting.md` — Format/modify/applyEdits
+-> `@./.claude/design/jsonc-effect/error-types.md` — TaggedError patterns
+-> `@./.claude/design/jsonc-effect/effect-patterns.md` — Effect-TS patterns used
+Load specific component docs when modifying that component's implementation.
 
 ### Key Design Decisions
 
