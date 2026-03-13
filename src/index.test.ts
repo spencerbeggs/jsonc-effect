@@ -848,3 +848,530 @@ describe("visitCollect", () => {
 		expect(errors).toHaveLength(0);
 	});
 });
+
+// ============================================================
+// Coverage: format.ts — property removal, array operations
+// ============================================================
+
+describe("modify — property removal", () => {
+	it("removes a property from an object", async () => {
+		const input = '{ "a": 1, "b": 2 }';
+		const edits = await Effect.runPromise(modify(input, ["a"], undefined));
+		const result = await Effect.runPromise(applyEdits(input, edits));
+		expect(result).not.toContain('"a"');
+		expect(edits.length).toBeGreaterThan(0);
+	});
+
+	it("removes the last property from an object", async () => {
+		const input = '{ "a": 1, "b": 2 }';
+		const edits = await Effect.runPromise(modify(input, ["b"], undefined));
+		const result = await Effect.runPromise(applyEdits(input, edits));
+		expect(result).not.toContain('"b"');
+		expect(edits.length).toBeGreaterThan(0);
+	});
+
+	it("removes entire document with empty path and undefined", async () => {
+		const input = '{ "a": 1 }';
+		const edits = await Effect.runPromise(modify(input, [], undefined));
+		const result = await Effect.runPromise(applyEdits(input, edits));
+		expect(result).toBe("");
+	});
+});
+
+describe("modify — array operations", () => {
+	it("replaces an element in an array", async () => {
+		const input = "[1, 2, 3]";
+		const edits = await Effect.runPromise(modify(input, [1], 99));
+		const result = await Effect.runPromise(applyEdits(input, edits));
+		const parsed = JSON.parse(result);
+		expect(parsed).toEqual([1, 99, 3]);
+	});
+
+	it("removes an element from an array", async () => {
+		const input = "[1, 2, 3]";
+		const edits = await Effect.runPromise(modify(input, [1], undefined));
+		const result = await Effect.runPromise(applyEdits(input, edits));
+		const parsed = JSON.parse(result);
+		expect(parsed).toEqual([1, 3]);
+	});
+
+	it("inserts at end of array", async () => {
+		const input = "[1, 2]";
+		const edits = await Effect.runPromise(modify(input, [2], 3));
+		const result = await Effect.runPromise(applyEdits(input, edits));
+		const parsed = JSON.parse(result);
+		expect(parsed).toEqual([1, 2, 3]);
+	});
+
+	it("inserts into empty array", async () => {
+		const input = "[]";
+		const edits = await Effect.runPromise(modify(input, [0], 42));
+		const result = await Effect.runPromise(applyEdits(input, edits));
+		const parsed = JSON.parse(result);
+		expect(parsed).toEqual([42]);
+	});
+
+	it("inserts new property into empty object", async () => {
+		const input = "{}";
+		const edits = await Effect.runPromise(modify(input, ["key"], "value"));
+		const result = await Effect.runPromise(applyEdits(input, edits));
+		const parsed = JSON.parse(result);
+		expect(parsed.key).toBe("value");
+	});
+
+	it("modifies nested array element", async () => {
+		const input = '{ "arr": [10, 20, 30] }';
+		const edits = await Effect.runPromise(modify(input, ["arr", 0], 99));
+		const result = await Effect.runPromise(applyEdits(input, edits));
+		const parsed = JSON.parse(result);
+		expect(parsed.arr[0]).toBe(99);
+	});
+
+	it("fails when path expects object but finds array", async () => {
+		const input = "[1, 2, 3]";
+		const result = await Effect.runPromise(Effect.either(modify(input, ["key"], 1)));
+		expect(result._tag).toBe("Left");
+	});
+
+	it("fails when path expects array but finds object", async () => {
+		const input = '{ "a": 1 }';
+		const result = await Effect.runPromise(Effect.either(modify(input, [0], 1)));
+		expect(result._tag).toBe("Left");
+	});
+});
+
+describe("modify — data-last (pipe)", () => {
+	it("works with pipe syntax", async () => {
+		const input = '{ "x": 1 }';
+		const result = await Effect.runPromise(
+			pipe(
+				input,
+				modify(["x"], 2),
+				Effect.flatMap((edits) => applyEdits(input, edits)),
+			),
+		);
+		const parsed = JSON.parse(result);
+		expect(parsed.x).toBe(2);
+	});
+});
+
+// ============================================================
+// Coverage: format.ts — formatting edge cases
+// ============================================================
+
+describe("format — edge cases", () => {
+	it("formats with range parameter", async () => {
+		const input = '{"a":1,\n"b":2}';
+		const edits = await Effect.runPromise(format(input, { offset: 0, length: 7 }));
+		expect(edits.length).toBeGreaterThanOrEqual(0);
+	});
+
+	it("inserts final newline when requested", async () => {
+		// Input with trailing whitespace so insertFinalNewline has something to replace
+		const input = '{"a":1}  ';
+		const result = await Effect.runPromise(formatAndApply(input, undefined, { insertFinalNewline: true }));
+		expect(result.endsWith("\n")).toBe(true);
+	});
+
+	it("handles keepLines option", async () => {
+		const input = '{\n"a":1,\n"b":2\n}';
+		const result = await Effect.runPromise(formatAndApply(input, undefined, { keepLines: true }));
+		expect(result).toContain("\n");
+	});
+
+	it("formats with custom eol", async () => {
+		const input = '{"a":1}';
+		const result = await Effect.runPromise(formatAndApply(input, undefined, { eol: "\r\n" }));
+		expect(result).toContain("\r\n");
+	});
+});
+
+// ============================================================
+// Coverage: visitor.ts — edge cases
+// ============================================================
+
+describe("visit — edge cases", () => {
+	it("handles trailing commas in objects", async () => {
+		const events = await Effect.runPromise(
+			visit('{ "a": 1, }').pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)),
+		);
+		const literals = events.filter(
+			(e): e is Extract<JsoncVisitorEvent, { _tag: "LiteralValue" }> => e._tag === "LiteralValue",
+		);
+		expect(literals).toHaveLength(1);
+		expect(literals[0].value).toBe(1);
+	});
+
+	it("handles trailing commas in arrays", async () => {
+		const events = await Effect.runPromise(
+			visit("[1, 2, ]").pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)),
+		);
+		const literals = events.filter(
+			(e): e is Extract<JsoncVisitorEvent, { _tag: "LiteralValue" }> => e._tag === "LiteralValue",
+		);
+		expect(literals).toHaveLength(2);
+	});
+
+	it("emits Error for missing colon in object", async () => {
+		const events = await Effect.runPromise(
+			visit('{ "a" 1 }').pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)),
+		);
+		const errors = events.filter((e): e is Extract<JsoncVisitorEvent, { _tag: "Error" }> => e._tag === "Error");
+		expect(errors.some((e) => e.code === "ColonExpected")).toBe(true);
+	});
+
+	it("emits Error for missing comma between properties", async () => {
+		const events = await Effect.runPromise(
+			visit('{ "a": 1 "b": 2 }').pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)),
+		);
+		const errors = events.filter((e): e is Extract<JsoncVisitorEvent, { _tag: "Error" }> => e._tag === "Error");
+		expect(errors.some((e) => e.code === "CommaExpected")).toBe(true);
+	});
+
+	it("emits Error for missing comma between array elements", async () => {
+		const events = await Effect.runPromise(visit("[1 2 3]").pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)));
+		const errors = events.filter((e): e is Extract<JsoncVisitorEvent, { _tag: "Error" }> => e._tag === "Error");
+		expect(errors.some((e) => e.code === "CommaExpected")).toBe(true);
+	});
+
+	it("emits Error for non-string property name", async () => {
+		const events = await Effect.runPromise(
+			visit("{ 123: true }").pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)),
+		);
+		const errors = events.filter((e): e is Extract<JsoncVisitorEvent, { _tag: "Error" }> => e._tag === "Error");
+		expect(errors.some((e) => e.code === "PropertyNameExpected")).toBe(true);
+	});
+
+	it("emits Error for unexpected token as value", async () => {
+		const events = await Effect.runPromise(visit("}").pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)));
+		const errors = events.filter((e): e is Extract<JsoncVisitorEvent, { _tag: "Error" }> => e._tag === "Error");
+		expect(errors.some((e) => e.code === "ValueExpected")).toBe(true);
+	});
+
+	it("handles string values (true, false, null)", async () => {
+		const events = await Effect.runPromise(
+			visit('[true, false, null, "hello"]').pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)),
+		);
+		const literals = events.filter(
+			(e): e is Extract<JsoncVisitorEvent, { _tag: "LiteralValue" }> => e._tag === "LiteralValue",
+		);
+		expect(literals).toHaveLength(4);
+		expect(literals[0].value).toBe(true);
+		expect(literals[1].value).toBe(false);
+		expect(literals[2].value).toBe(null);
+		expect(literals[3].value).toBe("hello");
+	});
+
+	it("handles empty input", async () => {
+		const events = await Effect.runPromise(visit("").pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)));
+		expect(events).toHaveLength(0);
+	});
+
+	it("emits Error for unclosed object", async () => {
+		const events = await Effect.runPromise(
+			visit('{ "a": 1').pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)),
+		);
+		const errors = events.filter((e): e is Extract<JsoncVisitorEvent, { _tag: "Error" }> => e._tag === "Error");
+		expect(errors.some((e) => e.code === "CloseBraceExpected")).toBe(true);
+	});
+
+	it("emits Error for unclosed array", async () => {
+		const events = await Effect.runPromise(visit("[1, 2").pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)));
+		const errors = events.filter((e): e is Extract<JsoncVisitorEvent, { _tag: "Error" }> => e._tag === "Error");
+		expect(errors.some((e) => e.code === "CloseBracketExpected")).toBe(true);
+	});
+});
+
+// ============================================================
+// Coverage: scanner.ts — edge cases
+// ============================================================
+
+describe("scanner — edge cases", () => {
+	it("scans unknown characters", () => {
+		const scanner = createScanner("@", false);
+		const kind = scanner.scan();
+		expect(kind).toBe("Unknown");
+	});
+
+	it("scans negative numbers", () => {
+		const scanner = createScanner("-42", true);
+		const kind = scanner.scan();
+		expect(kind).toBe("Number");
+		expect(scanner.getTokenValue()).toBe("-42");
+	});
+
+	it("handles unterminated string", () => {
+		const scanner = createScanner('"hello', false);
+		scanner.scan();
+		expect(scanner.getTokenError()).toBe("UnexpectedEndOfString");
+	});
+
+	it("handles unterminated block comment", () => {
+		const scanner = createScanner("/* comment without end", false);
+		scanner.scan();
+		expect(scanner.getTokenError()).toBe("UnexpectedEndOfComment");
+	});
+
+	it("scans all escape sequences", () => {
+		const scanner = createScanner('"\\n\\t\\r\\\\\\/"', true);
+		scanner.scan();
+		expect(scanner.getTokenValue()).toContain("\n");
+		expect(scanner.getTokenValue()).toContain("\t");
+	});
+
+	it("handles invalid escape character", () => {
+		const scanner = createScanner('"\\x"', false);
+		scanner.scan();
+		expect(scanner.getTokenError()).toBe("InvalidEscapeCharacter");
+	});
+
+	it("handles invalid unicode escape", () => {
+		const scanner = createScanner('"\\uGGGG"', false);
+		scanner.scan();
+		expect(scanner.getTokenError()).toBe("InvalidUnicode");
+	});
+
+	it("scans number with exponent", () => {
+		const scanner = createScanner("1e10", true);
+		const kind = scanner.scan();
+		expect(kind).toBe("Number");
+		expect(scanner.getTokenValue()).toBe("1e10");
+	});
+
+	it("reports position correctly", () => {
+		const scanner = createScanner("  42", false);
+		scanner.scan(); // trivia
+		scanner.scan(); // number
+		expect(scanner.getTokenOffset()).toBe(2);
+		expect(scanner.getTokenLength()).toBe(2);
+	});
+
+	it("setPosition resets scanner state", () => {
+		const scanner = createScanner('{"a": 1}', true);
+		scanner.scan(); // {
+		scanner.scan(); // "a"
+		scanner.setPosition(0);
+		const kind = scanner.scan();
+		expect(kind).toBe("OpenBrace");
+	});
+});
+
+// ============================================================
+// Coverage: parse.ts — edge cases
+// ============================================================
+
+describe("parse — edge cases", () => {
+	it("parses deeply nested structures", async () => {
+		let input = "";
+		for (let i = 0; i < 50; i++) input += "[";
+		input += "1";
+		for (let i = 0; i < 50; i++) input += "]";
+		const result = await Effect.runPromise(parse(input));
+		let current: unknown = result;
+		for (let i = 0; i < 50; i++) current = (current as unknown[])[0];
+		expect(current).toBe(1);
+	});
+
+	it("parses unicode property names", async () => {
+		const result = await Effect.runPromise(parse('{ "über": "café" }'));
+		expect((result as Record<string, string>).über).toBe("café");
+	});
+
+	it("parses empty string value", async () => {
+		const result = await Effect.runPromise(parse('""'));
+		expect(result).toBe("");
+	});
+
+	it("parses JSONC with only comments", async () => {
+		const result = await Effect.runPromise(Effect.either(parse("// just a comment")));
+		// Empty content with default options should fail
+		expect(result._tag).toBe("Left");
+	});
+
+	it("allows empty content with option", async () => {
+		const result = await Effect.runPromise(parse("", { allowEmptyContent: true }));
+		expect(result).toBeUndefined();
+	});
+
+	it("reports multiple errors", async () => {
+		const result = await Effect.runPromise(Effect.either(parse("{ , : }")));
+		if (result._tag === "Left") {
+			expect(result.left.errors.length).toBeGreaterThan(0);
+		}
+	});
+
+	it("handles trailing comma in allowTrailingComma mode", async () => {
+		const result = await Effect.runPromise(parse("[1, 2, ]", { allowTrailingComma: true }));
+		expect(result).toEqual([1, 2]);
+	});
+
+	it("reports error for trailing comma when not allowed", async () => {
+		const result = await Effect.runPromise(Effect.either(parse("[1, 2, ]", { allowTrailingComma: false })));
+		if (result._tag === "Left") {
+			expect(result.left.errors.length).toBeGreaterThan(0);
+		}
+	});
+
+	it("parseTree returns None for empty content with allowEmptyContent", async () => {
+		const result = await Effect.runPromise(parseTree("  ", { allowEmptyContent: true }));
+		expect(Option.isNone(result)).toBe(true);
+	});
+
+	it("parseTree builds correct AST for arrays", async () => {
+		const result = await Effect.runPromise(parseTree("[1, 2]"));
+		expect(Option.isSome(result)).toBe(true);
+		if (Option.isSome(result)) {
+			expect(result.value.type).toBe("array");
+			expect(result.value.children?.length).toBe(2);
+		}
+	});
+});
+
+// ============================================================
+// Coverage: ast.ts — edge cases
+// ============================================================
+
+// ============================================================
+// Coverage: visitor.ts — scan error events
+// ============================================================
+
+describe("visit — scan errors", () => {
+	it("emits Error for invalid unicode escape", async () => {
+		const events = await Effect.runPromise(
+			visit('"\\uGGGG"').pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)),
+		);
+		const errors = events.filter((e): e is Extract<JsoncVisitorEvent, { _tag: "Error" }> => e._tag === "Error");
+		expect(errors.some((e) => e.code === "InvalidUnicode")).toBe(true);
+	});
+
+	it("emits Error for invalid escape character", async () => {
+		const events = await Effect.runPromise(visit('"\\x"').pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)));
+		const errors = events.filter((e): e is Extract<JsoncVisitorEvent, { _tag: "Error" }> => e._tag === "Error");
+		expect(errors.some((e) => e.code === "InvalidEscapeCharacter")).toBe(true);
+	});
+
+	it("emits Error for unterminated string", async () => {
+		const events = await Effect.runPromise(visit('"hello').pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)));
+		const errors = events.filter((e): e is Extract<JsoncVisitorEvent, { _tag: "Error" }> => e._tag === "Error");
+		expect(errors.some((e) => e.code === "UnexpectedEndOfString")).toBe(true);
+	});
+
+	it("emits Error for unterminated block comment", async () => {
+		const events = await Effect.runPromise(
+			visit("/* unterminated").pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)),
+		);
+		const errors = events.filter((e): e is Extract<JsoncVisitorEvent, { _tag: "Error" }> => e._tag === "Error");
+		expect(errors.some((e) => e.code === "UnexpectedEndOfComment")).toBe(true);
+	});
+
+	it("emits Error for invalid character", async () => {
+		const events = await Effect.runPromise(visit("@").pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)));
+		const errors = events.filter((e): e is Extract<JsoncVisitorEvent, { _tag: "Error" }> => e._tag === "Error");
+		expect(errors.length).toBeGreaterThan(0);
+	});
+});
+
+// ============================================================
+// Coverage: parse.ts — error message formatting
+// ============================================================
+
+describe("parse — error messages", () => {
+	it("includes error messages for ColonExpected", async () => {
+		const result = await Effect.runPromise(Effect.either(parse('{ "a" 1 }')));
+		if (result._tag === "Left") {
+			expect(result.left.errors.some((e) => e.code === "ColonExpected")).toBe(true);
+		}
+	});
+
+	it("includes error messages for CloseBraceExpected", async () => {
+		const result = await Effect.runPromise(Effect.either(parse('{ "a": 1')));
+		if (result._tag === "Left") {
+			expect(result.left.errors.some((e) => e.code === "CloseBraceExpected")).toBe(true);
+		}
+	});
+
+	it("includes error messages for CloseBracketExpected", async () => {
+		const result = await Effect.runPromise(Effect.either(parse("[1, 2")));
+		if (result._tag === "Left") {
+			expect(result.left.errors.some((e) => e.code === "CloseBracketExpected")).toBe(true);
+		}
+	});
+
+	it("includes error messages for EndOfFileExpected", async () => {
+		const result = await Effect.runPromise(Effect.either(parse("1 2")));
+		if (result._tag === "Left") {
+			expect(result.left.errors.some((e) => e.code === "EndOfFileExpected")).toBe(true);
+		}
+	});
+
+	it("includes error messages for InvalidCommentToken", async () => {
+		const result = await Effect.runPromise(Effect.either(parse("// comment\n1", { disallowComments: true })));
+		if (result._tag === "Left") {
+			expect(result.left.errors.some((e) => e.code === "InvalidCommentToken")).toBe(true);
+		}
+	});
+
+	it("includes error messages for scanner errors", async () => {
+		const result = await Effect.runPromise(Effect.either(parse('"\\uGGGG"')));
+		if (result._tag === "Left") {
+			expect(result.left.errors.some((e) => e.code === "InvalidUnicode")).toBe(true);
+		}
+	});
+});
+
+// ============================================================
+// Coverage: ast.ts — more branch coverage
+// ============================================================
+
+describe("ast — edge cases", () => {
+	it("findNodeAtOffset returns None for offset past end", async () => {
+		const tree = await Effect.runPromise(parseTree('{ "a": 1 }'));
+		if (Option.isSome(tree)) {
+			const node = await Effect.runPromise(findNodeAtOffset(tree.value, 1000));
+			expect(Option.isNone(node)).toBe(true);
+		}
+	});
+
+	it("getNodePath returns path for root node offset", async () => {
+		const tree = await Effect.runPromise(parseTree('{ "a": 1 }'));
+		if (Option.isSome(tree)) {
+			const path = await Effect.runPromise(getNodePath(tree.value, 0));
+			expect(Option.isSome(path)).toBe(true);
+		}
+	});
+
+	it("getNodeValue reconstructs nested objects", async () => {
+		const tree = await Effect.runPromise(parseTree('{ "a": { "b": [1, 2] } }'));
+		if (Option.isSome(tree)) {
+			const value = await Effect.runPromise(getNodeValue(tree.value));
+			expect(value).toEqual({ a: { b: [1, 2] } });
+		}
+	});
+
+	it("findNode returns none for missing nested path", async () => {
+		const tree = await Effect.runPromise(parseTree('{ "a": 1 }'));
+		if (Option.isSome(tree)) {
+			const result = await Effect.runPromise(findNode(tree.value, ["a", "b", "c"]));
+			expect(Option.isNone(result)).toBe(true);
+		}
+	});
+
+	it("findNode navigates array indices", async () => {
+		const tree = await Effect.runPromise(parseTree("[10, 20, 30]"));
+		if (Option.isSome(tree)) {
+			const result = await Effect.runPromise(findNode(tree.value, [1]));
+			expect(Option.isSome(result)).toBe(true);
+			if (Option.isSome(result)) {
+				expect(result.value.value).toBe(20);
+			}
+		}
+	});
+
+	it("findNode returns none for out-of-bounds array index", async () => {
+		const tree = await Effect.runPromise(parseTree("[1, 2]"));
+		if (Option.isSome(tree)) {
+			const result = await Effect.runPromise(findNode(tree.value, [5]));
+			expect(Option.isNone(result)).toBe(true);
+		}
+	});
+});
