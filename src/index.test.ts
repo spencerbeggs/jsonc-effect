@@ -719,6 +719,68 @@ describe("modify", () => {
 	});
 });
 
+describe("modify — array operations", () => {
+	it("replaces array element by index", async () => {
+		const input = '{ "items": [1, 2, 3] }';
+		const edits = await Effect.runPromise(modify(input, ["items", 1], 99));
+		const result = await Effect.runPromise(applyEdits(input, edits));
+		expect(JSON.parse(result)).toEqual({ items: [1, 99, 3] });
+	});
+
+	it("removes array element by setting undefined", async () => {
+		const input = '{ "items": [1, 2, 3] }';
+		const edits = await Effect.runPromise(modify(input, ["items", 1], undefined));
+		const result = await Effect.runPromise(applyEdits(input, edits));
+		expect(result).not.toContain("2");
+	});
+
+	it("inserts at end of array", async () => {
+		const input = '{ "items": [1, 2] }';
+		const edits = await Effect.runPromise(modify(input, ["items", 2], 3));
+		const result = await Effect.runPromise(applyEdits(input, edits));
+		expect(result).toContain("3");
+	});
+
+	it("inserts into empty array", async () => {
+		const input = '{ "items": [] }';
+		const edits = await Effect.runPromise(modify(input, ["items", 0], "first"));
+		const result = await Effect.runPromise(applyEdits(input, edits));
+		expect(result).toContain("first");
+	});
+});
+
+describe("parse — error message branches", () => {
+	it("reports UnexpectedEndOfString", async () => {
+		const result = await Effect.runPromise(Effect.either(parse('"unterminated')));
+		expect(result._tag).toBe("Left");
+		if (result._tag === "Left") {
+			expect(result.left.errors.length).toBeGreaterThan(0);
+		}
+	});
+
+	it("reports InvalidUnicode", async () => {
+		const result = await Effect.runPromise(Effect.either(parse('"\\u00zz"')));
+		expect(result._tag).toBe("Left");
+	});
+
+	it("reports InvalidEscapeCharacter", async () => {
+		const result = await Effect.runPromise(Effect.either(parse('"\\q"')));
+		expect(result._tag).toBe("Left");
+	});
+
+	it("scanner handles standalone minus sign", async () => {
+		const scanner = createScanner("-", false);
+		const kind = scanner.scan();
+		expect(kind).toBe("Unknown");
+	});
+
+	it("scanner handles invalid characters", async () => {
+		const scanner = createScanner("\x01", false);
+		const kind = scanner.scan();
+		expect(kind).toBe("Unknown");
+	});
+});
+
 // ============================================================
 // Visitor / Stream Tests
 // ============================================================
