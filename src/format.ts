@@ -15,17 +15,44 @@ import type { JsoncEdit, JsoncFormattingOptions, JsoncPath, JsoncRange, JsoncSyn
 /**
  * Compute formatting edits for a JSONC document.
  *
- * Does NOT mutate the input — returns an array of edits to apply
- * with applyEdits().
+ * Returns an array of {@link JsoncEdit} objects describing text replacements
+ * that, when applied, produce a well-formatted document. The input text is
+ * never mutated — apply the returned edits with {@link applyEdits}.
+ *
+ * @param text - The JSONC source text to format.
+ * @param range - Optional sub-range to format. When provided, only edits
+ *   within the range are returned.
+ * @param options - Partial {@link JsoncFormattingOptions} controlling indent
+ *   size, tabs vs. spaces, EOL style, and final-newline insertion.
+ * @returns An `Effect` that succeeds with a read-only array of
+ *   {@link JsoncEdit} objects.
+ *
+ * @remarks
+ * This function is non-mutating by design. It computes a minimal set of
+ * whitespace edits; structural changes (inserting or removing properties)
+ * are handled by {@link modify}. The `range` parameter allows formatting a
+ * subset of the document without touching surrounding text.
+ *
+ * @see {@link applyEdits} to apply the returned edits to the source text.
+ * @see {@link formatAndApply} for a one-step format-and-apply convenience.
+ * @see {@link JsoncFormattingOptions} for available formatting controls.
  *
  * @example
  * ```ts
  * import { Effect } from "effect";
- * import { format, applyEdits } from "@spencerbeggs/jsonc-effect";
+ * import type { JsoncEdit } from "jsonc-effect";
+ * import { format, applyEdits } from "jsonc-effect";
  *
- * const edits = Effect.runSync(format('{"a":1}'));
- * const formatted = Effect.runSync(applyEdits('{"a":1}', edits));
+ * const input = '{"a":1, "b" :2}';
+ * const edits: ReadonlyArray<JsoncEdit> = Effect.runSync(format(input));
+ * const formatted: string = Effect.runSync(applyEdits(input, edits));
  * ```
+ *
+ * @privateRemarks
+ * Uses {@link createScanner} internally to tokenize the input and compute
+ * whitespace adjustments between consecutive non-trivia tokens.
+ *
+ * @public
  */
 export const format = (
 	text: string,
@@ -34,8 +61,49 @@ export const format = (
 ): Effect.Effect<ReadonlyArray<JsoncEdit>> => Effect.sync(() => formatImpl(text, range, options));
 
 /**
- * Apply an array of edits to JSONC source text.
- * Edits are applied in reverse offset order to avoid offset shifting.
+ * Apply an array of text edits to JSONC source text.
+ *
+ * This is a {@link https://effect.website/docs/function-dual | Function.dual}
+ * that supports both data-first and data-last (pipeline) usage.
+ *
+ * @param text - The original JSONC source text.
+ * @param edits - A read-only array of {@link JsoncEdit} objects, typically
+ *   produced by {@link format} or {@link modify}.
+ * @returns An `Effect` that succeeds with the edited string.
+ *
+ * @remarks
+ * Edits are sorted in reverse offset order before application so that
+ * earlier edits do not shift the offsets of later ones. The original `edits`
+ * array is not mutated.
+ *
+ * @see {@link format} to compute formatting edits.
+ * @see {@link modify} to compute structural edits (insert, replace, remove).
+ *
+ * @example Data-first usage
+ * ```ts
+ * import { Effect } from "effect";
+ * import { format, applyEdits } from "jsonc-effect";
+ *
+ * const input = '{"a":1}';
+ * const edits = Effect.runSync(format(input));
+ * const result: string = Effect.runSync(applyEdits(input, edits));
+ * ```
+ *
+ * @example Pipeline with modify
+ * ```ts
+ * import { Effect, pipe } from "effect";
+ * import { modify, applyEdits } from "jsonc-effect";
+ *
+ * const input = '{ "a": 1 }';
+ * const result = pipe(
+ *   input,
+ *   modify(["a"], 42),
+ *   Effect.flatMap((edits) => applyEdits(input, edits)),
+ *   Effect.runSync,
+ * );
+ * ```
+ *
+ * @public
  */
 export const applyEdits: {
 	(edits: ReadonlyArray<JsoncEdit>): (text: string) => Effect.Effect<string>;
@@ -52,7 +120,31 @@ export const applyEdits: {
 );
 
 /**
- * Format a JSONC document in one step (format + apply).
+ * Format a JSONC document in one step by computing edits and immediately
+ * applying them.
+ *
+ * This is a convenience that combines {@link format} and {@link applyEdits}
+ * into a single call.
+ *
+ * @param text - The JSONC source text to format.
+ * @param range - Optional sub-range to restrict formatting to.
+ * @param options - Partial {@link JsoncFormattingOptions} controlling indent
+ *   size, tabs vs. spaces, EOL style, and final-newline insertion.
+ * @returns An `Effect` that succeeds with the fully formatted string.
+ *
+ * @see {@link format} to obtain the edits without applying them.
+ * @see {@link applyEdits} to apply edits separately.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect";
+ * import { formatAndApply } from "jsonc-effect";
+ *
+ * const input = '{"a":1, "b" :2}';
+ * const formatted: string = Effect.runSync(formatAndApply(input));
+ * ```
+ *
+ * @public
  */
 export const formatAndApply = (
 	text: string,
@@ -62,24 +154,79 @@ export const formatAndApply = (
 
 /**
  * Compute edits to insert, replace, or remove a value at a JSON path.
- * Setting value to undefined removes the property/element.
  *
- * @example
+ * This is a {@link https://effect.website/docs/function-dual | Function.dual}
+ * that supports both data-first and data-last (pipeline) usage.
+ *
+ * @param text - The JSONC source text to modify.
+ * @param path - A {@link JsoncPath} (array of string keys and numeric indices)
+ *   identifying the target location in the JSON structure.
+ * @param value - The value to set. Pass `undefined` to remove the
+ *   property or array element at the given path.
+ * @param options - Optional object with `formattingOptions` controlling
+ *   indent size, tabs vs. spaces, and EOL style for generated text.
+ * @returns An `Effect` that succeeds with a read-only array of
+ *   {@link JsoncEdit} objects, or fails with a
+ *   {@link JsoncModificationError} if the path cannot be navigated.
+ *
+ * @remarks
+ * Setting `value` to `undefined` removes the targeted property or element,
+ * including its surrounding comma. When inserting a new property into an
+ * object, it is appended after the last existing property.
+ *
+ * @see {@link applyEdits} to apply the returned edits to the source text.
+ * @see {@link JsoncModificationError} for the error type on navigation failure.
+ *
+ * @example Update an existing property
+ * ```ts
+ * import { Effect } from "effect";
+ * import { modify, applyEdits } from "jsonc-effect";
+ *
+ * const input = '{ "a": 1 }';
+ * const edits = Effect.runSync(modify(input, ["a"], 2));
+ * const result: string = Effect.runSync(applyEdits(input, edits));
+ * ```
+ *
+ * @example Insert a new property
+ * ```ts
+ * import { Effect } from "effect";
+ * import { modify, applyEdits } from "jsonc-effect";
+ *
+ * const input = '{ "a": 1 }';
+ * const edits = Effect.runSync(modify(input, ["b"], "hello"));
+ * const result: string = Effect.runSync(applyEdits(input, edits));
+ * ```
+ *
+ * @example Remove a property
+ * ```ts
+ * import { Effect } from "effect";
+ * import { modify, applyEdits } from "jsonc-effect";
+ *
+ * const input = '{ "a": 1, "b": 2 }';
+ * const edits = Effect.runSync(modify(input, ["a"], undefined));
+ * const result: string = Effect.runSync(applyEdits(input, edits));
+ * ```
+ *
+ * @example Pipeline (data-last) usage
  * ```ts
  * import { Effect, pipe } from "effect";
- * import { modify, applyEdits } from "@spencerbeggs/jsonc-effect";
+ * import { modify, applyEdits } from "jsonc-effect";
  *
- * // Data-first
- * const edits = Effect.runSync(modify('{ "a": 1 }', ["a"], 2));
- *
- * // Data-last (pipeline)
+ * const input = '{ "a": 1 }';
  * const result = pipe(
- *   '{ "a": 1 }',
- *   modify(["a"], 2),
- *   Effect.flatMap((edits) => applyEdits('{ "a": 1 }', edits)),
+ *   input,
+ *   modify(["a"], 42),
+ *   Effect.flatMap((edits) => applyEdits(input, edits)),
  *   Effect.runSync,
  * );
  * ```
+ *
+ * @privateRemarks
+ * Uses its own scanner-based navigation to locate the target path rather
+ * than building a full AST via `parseTree`. This keeps the implementation
+ * lightweight and avoids an intermediate allocation.
+ *
+ * @public
  */
 export const modify: {
 	(

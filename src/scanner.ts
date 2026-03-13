@@ -10,28 +10,63 @@
 import type { JsoncScanError, JsoncSyntaxKind } from "./schemas.js";
 
 /**
- * JSONC Scanner interface — a stateful cursor over input text.
+ * Stateful cursor over JSONC text that produces tokens on demand.
+ *
+ * @remarks
+ * The scanner is the lowest-level API in jsonc-effect. It exposes an
+ * imperative scan-loop pattern: call {@link JsoncScanner.scan | scan()} in a
+ * loop until it returns `"EOF"`, inspecting the current token with the
+ * getter methods after each call.
+ *
+ * Unlike the rest of the library, the scanner is **mutable** — each call to
+ * `scan()` advances an internal cursor and updates all token-related state.
+ *
+ * @see {@link createScanner} — factory function that produces a `JsoncScanner`
+ * @see {@link JsoncSyntaxKind} — string literal union of all token types
+ *
+ * @example
+ * Collecting all structural tokens from a JSONC string:
+ * ```ts
+ * import type { JsoncSyntaxKind } from "jsonc-effect";
+ * import { createScanner } from "jsonc-effect";
+ *
+ * const scanner = createScanner('{ "key": 42 }', true);
+ * const tokens: JsoncSyntaxKind[] = [];
+ * let kind: JsoncSyntaxKind;
+ * do {
+ *   kind = scanner.scan();
+ *   tokens.push(kind);
+ * } while (kind !== "EOF");
+ * console.log(tokens);
+ * // ["OpenBrace", "String", "Colon", "Number", "CloseBrace", "EOF"]
+ * ```
+ *
+ * @privateRemarks
+ * The scanner is the only mutable/stateful part of the library. All other
+ * APIs are pure Effect pipelines built on top of it.
+ *
+ * @public
  */
 export interface JsoncScanner {
-	/** Advance to the next token and return its kind */
+	/** Advance the cursor to the next token and return its {@link JsoncSyntaxKind}. */
 	scan(): JsoncSyntaxKind;
-	/** Get the current token kind */
+	/** Return the {@link JsoncSyntaxKind} of the current token without advancing. */
 	getToken(): JsoncSyntaxKind;
-	/** Get the string value of the current token */
+	/** Return the string value of the current token (e.g. the unescaped content of a string literal). */
 	getTokenValue(): string;
-	/** Get the character offset of the current token */
+	/** Return the zero-based character offset where the current token begins. */
 	getTokenOffset(): number;
-	/** Get the length of the current token */
+	/** Return the character length of the current token. */
 	getTokenLength(): number;
-	/** Get the line number of the current token start */
+	/** Return the zero-based line number where the current token starts. */
 	getTokenStartLine(): number;
-	/** Get the character position within the line */
+	/** Return the zero-based character position within the line where the current token starts. */
 	getTokenStartCharacter(): number;
-	/** Get the scan error for the current token */
+	/** Return the {@link JsoncScanError} for the current token, or `"None"` if no error. */
 	getTokenError(): JsoncScanError;
-	/** Get the current scanner position */
+	/** Return the current cursor position (byte offset into the source text). */
 	getPosition(): number;
-	/** Set the scanner position */
+	/** Set the cursor position, resetting the current token state. */
 	setPosition(pos: number): void;
 }
 
@@ -43,11 +78,42 @@ const isLineBreak = (ch: number): boolean => ch === 0x0a || ch === 0x0d || ch ==
 const isDigit = (ch: number): boolean => ch >= 0x30 && ch <= 0x39;
 
 /**
- * Create a JSONC scanner.
+ * Create a stateful {@link JsoncScanner} for the given JSONC string.
  *
- * @param text - The JSONC string to scan
- * @param ignoreTrivia - If true, skip whitespace, line breaks, and comments
- * @returns A JsoncScanner for iterating over tokens
+ * @param text - JSONC string to tokenize
+ * @param ignoreTrivia - If `true`, the scanner automatically skips whitespace,
+ *   line-break, and comment tokens so that only structural tokens are returned
+ *   (default: `false`).
+ * @returns A stateful {@link JsoncScanner} positioned before the first token.
+ *
+ * @remarks
+ * When `ignoreTrivia` is `true` the scanner is suitable for building parsers
+ * that only care about structural tokens (`OpenBrace`, `String`, `Number`,
+ * etc.). Set it to `false` (the default) when you need to preserve comments
+ * or whitespace — for example in a formatter or a comment-stripping pass.
+ *
+ * @see {@link JsoncScanner} — the interface returned by this factory
+ * @see {@link parse} — higher-level API that uses a scanner internally
+ *
+ * @example
+ * Tokenizing a JSONC string and printing each token:
+ * ```ts
+ * import type { JsoncSyntaxKind } from "jsonc-effect";
+ * import { createScanner } from "jsonc-effect";
+ *
+ * const scanner = createScanner('{ "name": "jsonc" }', true);
+ * let kind: JsoncSyntaxKind;
+ * do {
+ *   kind = scanner.scan();
+ *   console.log(kind, scanner.getTokenValue());
+ * } while (kind !== "EOF");
+ * ```
+ *
+ * @privateRemarks
+ * Ported from Microsoft's jsonc-parser (MIT), adapted to use string literal
+ * token types instead of numeric enums.
+ *
+ * @public
  */
 export const createScanner = (text: string, ignoreTrivia = false): JsoncScanner => {
 	const len = text.length;

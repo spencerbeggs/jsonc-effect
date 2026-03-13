@@ -1,6 +1,7 @@
 import { Chunk, Effect, Option, Schema, Stream, pipe } from "effect";
 import { describe, expect, it } from "vitest";
 import { findNode, findNodeAtOffset, getNodePath, getNodeValue } from "./ast.js";
+import { equals, equalsValue } from "./equality.js";
 import { JsoncModificationError, JsoncNodeNotFoundError, JsoncParseError, JsoncParseErrorDetail } from "./errors.js";
 import { applyEdits, format, formatAndApply, modify } from "./format.js";
 import { parse, parseTree, stripComments } from "./parse.js";
@@ -1804,5 +1805,133 @@ describe("Microsoft parity — stripComments", () => {
 		expect(result.startsWith("42")).toBe(true);
 		// The comment should be replaced with spaces, preserving length
 		expect(result.length).toBe("42 // comment".length);
+	});
+});
+
+// ============================================================
+// Equality Tests
+// ============================================================
+
+describe("equals", () => {
+	it("returns true for identical strings", () => {
+		expect(Effect.runSync(equals('{"a":1}', '{"a":1}'))).toBe(true);
+	});
+
+	it("ignores whitespace and formatting differences", () => {
+		expect(Effect.runSync(equals('{"a":1}', '{ "a": 1 }'))).toBe(true);
+	});
+
+	it("ignores object key ordering", () => {
+		const a = '{ "foo": 1, "bar": 2 }';
+		const b = '{ "bar": 2, "foo": 1 }';
+		expect(Effect.runSync(equals(a, b))).toBe(true);
+	});
+
+	it("ignores comments", () => {
+		const a = '{ "foo": 1, "bar": 2 }';
+		const b = '{ "foo": 1, /* comment */ "bar": 2 }';
+		expect(Effect.runSync(equals(a, b))).toBe(true);
+	});
+
+	it("ignores line comments", () => {
+		const a = '{ "x": 10 }';
+		const b = '{ "x": 10 // ten\n}';
+		expect(Effect.runSync(equals(a, b))).toBe(true);
+	});
+
+	it("returns false for different values", () => {
+		expect(Effect.runSync(equals('{"a":1}', '{"a":2}'))).toBe(false);
+	});
+
+	it("returns false for different keys", () => {
+		expect(Effect.runSync(equals('{"a":1}', '{"b":1}'))).toBe(false);
+	});
+
+	it("returns false for different array order", () => {
+		expect(Effect.runSync(equals("[1,2]", "[2,1]"))).toBe(false);
+	});
+
+	it("returns true for equal arrays", () => {
+		expect(Effect.runSync(equals("[1,2,3]", "[ 1, 2, 3 ]"))).toBe(true);
+	});
+
+	it("handles nested objects with different key ordering", () => {
+		const a = '{ "a": { "x": 1, "y": 2 }, "b": 3 }';
+		const b = '{ "b": 3, "a": { "y": 2, "x": 1 } }';
+		expect(Effect.runSync(equals(a, b))).toBe(true);
+	});
+
+	it("handles primitives", () => {
+		expect(Effect.runSync(equals("42", "42"))).toBe(true);
+		expect(Effect.runSync(equals('"hello"', '"hello"'))).toBe(true);
+		expect(Effect.runSync(equals("true", "true"))).toBe(true);
+		expect(Effect.runSync(equals("null", "null"))).toBe(true);
+	});
+
+	it("returns false for different types", () => {
+		expect(Effect.runSync(equals("1", '"1"'))).toBe(false);
+		expect(Effect.runSync(equals("null", "false"))).toBe(false);
+	});
+
+	it("fails with JsoncParseError for invalid JSONC", () => {
+		const result = Effect.runSyncExit(equals("{ invalid }", '{"a":1}'));
+		expect(result._tag).toBe("Failure");
+	});
+
+	it("supports data-last (pipeline) usage", () => {
+		const compareTo = equals('{ "a": 1 }');
+		expect(Effect.runSync(compareTo('{"a":1}'))).toBe(true);
+	});
+
+	it("handles objects with different number of keys", () => {
+		expect(Effect.runSync(equals('{"a":1}', '{"a":1,"b":2}'))).toBe(false);
+	});
+
+	it("handles empty objects and arrays", () => {
+		expect(Effect.runSync(equals("{}", "{}"))).toBe(true);
+		expect(Effect.runSync(equals("[]", "[]"))).toBe(true);
+		expect(Effect.runSync(equals("{}", "[]"))).toBe(false);
+	});
+});
+
+describe("equalsValue", () => {
+	it("compares JSONC string against JS value", () => {
+		expect(Effect.runSync(equalsValue('{"port":3000}', { port: 3000 }))).toBe(true);
+	});
+
+	it("ignores comments and formatting", () => {
+		const doc = '{ "port": 3000, /* server config */ "host": "localhost" }';
+		expect(Effect.runSync(equalsValue(doc, { host: "localhost", port: 3000 }))).toBe(true);
+	});
+
+	it("returns false for non-matching values", () => {
+		expect(Effect.runSync(equalsValue('{"a":1}', { a: 2 }))).toBe(false);
+	});
+
+	it("handles arrays", () => {
+		expect(Effect.runSync(equalsValue("[1,2,3]", [1, 2, 3]))).toBe(true);
+		expect(Effect.runSync(equalsValue("[1,2,3]", [3, 2, 1]))).toBe(false);
+	});
+
+	it("handles primitives", () => {
+		expect(Effect.runSync(equalsValue("42", 42))).toBe(true);
+		expect(Effect.runSync(equalsValue('"hello"', "hello"))).toBe(true);
+		expect(Effect.runSync(equalsValue("true", true))).toBe(true);
+		expect(Effect.runSync(equalsValue("null", null))).toBe(true);
+	});
+
+	it("handles nested structures", () => {
+		const doc = '{ "a": { "b": [1, 2] }, "c": null }';
+		expect(Effect.runSync(equalsValue(doc, { c: null, a: { b: [1, 2] } }))).toBe(true);
+	});
+
+	it("fails with JsoncParseError for invalid JSONC", () => {
+		const result = Effect.runSyncExit(equalsValue("{ bad }", {}));
+		expect(result._tag).toBe("Failure");
+	});
+
+	it("supports data-last (pipeline) usage", () => {
+		const matchesValue = equalsValue({ port: 3000 });
+		expect(Effect.runSync(matchesValue('{"port":3000}'))).toBe(true);
 	});
 });

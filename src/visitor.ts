@@ -14,6 +14,51 @@ import type { JsoncParseOptions, JsoncSyntaxKind } from "./schemas.js";
 
 /**
  * Discriminated union of JSONC visitor events.
+ *
+ * Each variant carries an `_tag` discriminant, an `offset`, and a `length`
+ * describing where the event occurred in the source text. Some variants
+ * include additional fields such as `path`, `value`, or `property`.
+ *
+ * @remarks
+ * The nine event types are:
+ *
+ * - **ObjectBegin** — opening `{` of an object, includes `path`.
+ * - **ObjectEnd** — closing `}` of an object.
+ * - **ObjectProperty** — a property key, includes `property` and `path`.
+ * - **ArrayBegin** — opening `[` of an array, includes `path`.
+ * - **ArrayEnd** — closing `]` of an array.
+ * - **LiteralValue** — a string, number, boolean, or null literal,
+ *   includes `value` and `path`.
+ * - **Separator** — a `,` or `:` character.
+ * - **Comment** — a line or block comment.
+ * - **Error** — a parse error, includes a {@link JsoncParseErrorCode} `code`.
+ *
+ * Use the `_tag` field to discriminate between variants in `switch`
+ * statements or {@link https://effect.website/docs/stream/operations | Stream}
+ * filter predicates.
+ *
+ * @see {@link visit} to produce a stream of these events.
+ * @see {@link visitCollect} to collect matching events in one step.
+ *
+ * @example Filtering events by tag
+ * ```ts
+ * import { Chunk, Effect, Stream } from "effect";
+ * import type { JsoncVisitorEvent } from "jsonc-effect";
+ * import { visit } from "jsonc-effect";
+ *
+ * const literals = Effect.runSync(
+ *   visit('{ "a": 1 }').pipe(
+ *     Stream.filter(
+ *       (e): e is Extract<JsoncVisitorEvent, { _tag: "LiteralValue" }> =>
+ *         e._tag === "LiteralValue",
+ *     ),
+ *     Stream.runCollect,
+ *     Effect.map(Chunk.toReadonlyArray),
+ *   ),
+ * );
+ * ```
+ *
+ * @public
  */
 export type JsoncVisitorEvent =
 	| {
@@ -49,32 +94,119 @@ export type JsoncVisitorEvent =
 	| { readonly _tag: "Error"; readonly code: JsoncParseErrorCode; readonly offset: number; readonly length: number };
 
 /**
- * Create a Stream of visitor events from JSONC text.
+ * Create a lazy `Stream` of {@link JsoncVisitorEvent} from JSONC text.
  *
- * Uses a lazy generator internally — events are produced on demand
- * as the stream is consumed, not pre-collected into memory.
+ * Events are produced on demand as the stream is consumed, not
+ * pre-collected into memory. This makes `visit` suitable for large
+ * documents and supports early termination via `Stream.take` or
+ * `Stream.takeWhile` without scanning the entire input.
  *
- * @example
+ * @param text - The JSONC source text to visit.
+ * @param options - Optional partial {@link JsoncParseOptions} controlling
+ *   comment handling and trailing-comma tolerance.
+ * @returns A `Stream` of {@link JsoncVisitorEvent} objects.
+ *
+ * @remarks
+ * The stream is backed by a lazy generator — no work is performed until
+ * the stream is consumed. Because evaluation is demand-driven, combining
+ * `visit` with `Stream.take` allows efficient partial scans of large
+ * documents without allocating a full AST.
+ *
+ * @see {@link visitCollect} for a one-step filter-and-collect convenience.
+ * @see {@link JsoncVisitorEvent} for the event type definitions.
+ *
+ * @example Collect all events
  * ```ts
  * import { Chunk, Effect, Stream } from "effect";
- * import { visit } from "@spencerbeggs/jsonc-effect";
+ * import { visit } from "jsonc-effect";
  *
- * // Collect all events
  * const all = Effect.runSync(
- *   visit('{ "a": 1 }').pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)),
- * );
- *
- * // Take only the first 3 events (lazy — won't scan entire document)
- * const first3 = Effect.runSync(
- *   visit(largeDoc).pipe(Stream.take(3), Stream.runCollect, Effect.map(Chunk.toReadonlyArray)),
+ *   visit('{ "a": 1 }').pipe(
+ *     Stream.runCollect,
+ *     Effect.map(Chunk.toReadonlyArray),
+ *   ),
  * );
  * ```
+ *
+ * @example Filter and take the first match
+ * ```ts
+ * import { Chunk, Effect, Stream } from "effect";
+ * import { visit } from "jsonc-effect";
+ *
+ * const firstLiteral = Effect.runSync(
+ *   visit('{ "a": 1, "b": 2 }').pipe(
+ *     Stream.filter((e) => e._tag === "LiteralValue"),
+ *     Stream.take(1),
+ *     Stream.runCollect,
+ *     Effect.map(Chunk.toReadonlyArray),
+ *   ),
+ * );
+ * ```
+ *
+ * @example Extract property names
+ * ```ts
+ * import { Chunk, Effect, Stream } from "effect";
+ * import { visit } from "jsonc-effect";
+ *
+ * const propertyNames = Effect.runSync(
+ *   visit('{ "name": "Alice", "age": 30 }').pipe(
+ *     Stream.filter((e) => e._tag === "ObjectProperty"),
+ *     Stream.map((e) => (e as { property: string }).property),
+ *     Stream.runCollect,
+ *     Effect.map(Chunk.toReadonlyArray),
+ *   ),
+ * );
+ * ```
+ *
+ * @privateRemarks
+ * Internally wraps a generator function with `Stream.fromIterable`,
+ * preserving laziness. The generator yields events as it encounters
+ * tokens from the scanner.
+ *
+ * @public
  */
 export const visit = (text: string, options?: Partial<JsoncParseOptions>): Stream.Stream<JsoncVisitorEvent> =>
 	Stream.fromIterable(visitGen(text, options));
 
 /**
- * Visit JSONC text and collect all events matching a predicate.
+ * Visit JSONC text and collect all events matching a type-guard predicate.
+ *
+ * This is a convenience that composes {@link visit}, `Stream.filter`, and
+ * `Stream.runCollect` into a single call.
+ *
+ * @param text - The JSONC source text to visit.
+ * @param predicate - A type-guard function that narrows
+ *   {@link JsoncVisitorEvent} to the desired subtype `A`.
+ * @param options - Optional partial {@link JsoncParseOptions}.
+ * @returns An `Effect` that succeeds with a read-only array of the
+ *   matched events.
+ *
+ * @remarks
+ * Equivalent to:
+ * ```
+ * visit(text, options) |> Stream.filter(predicate) |> Stream.runCollect
+ * ```
+ * Use this when you need all matching events and do not require
+ * intermediate stream transformations.
+ *
+ * @see {@link visit} for full stream-level control.
+ *
+ * @example Collecting literal values
+ * ```ts
+ * import { Effect } from "effect";
+ * import type { JsoncVisitorEvent } from "jsonc-effect";
+ * import { visitCollect } from "jsonc-effect";
+ *
+ * const literals = Effect.runSync(
+ *   visitCollect(
+ *     '{ "a": 1, "b": true }',
+ *     (e): e is Extract<JsoncVisitorEvent, { _tag: "LiteralValue" }> =>
+ *       e._tag === "LiteralValue",
+ *   ),
+ * );
+ * ```
+ *
+ * @public
  */
 export const visitCollect = <A extends JsoncVisitorEvent>(
 	text: string,
