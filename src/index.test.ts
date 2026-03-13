@@ -1,4 +1,4 @@
-import { Effect, Option, Schema, pipe } from "effect";
+import { Chunk, Effect, Option, Schema, Stream, pipe } from "effect";
 import { describe, expect, it } from "vitest";
 import { findNode, findNodeAtOffset, getNodePath, getNodeValue } from "./ast.js";
 import { JsoncModificationError, JsoncNodeNotFoundError, JsoncParseError, JsoncParseErrorDetail } from "./errors.js";
@@ -7,6 +7,8 @@ import { parse, parseTree, stripComments } from "./parse.js";
 import { createScanner } from "./scanner.js";
 import { JsoncFromString, makeJsoncFromString, makeJsoncSchema } from "./schema-integration.js";
 import { JsoncEdit, JsoncFormattingOptions, JsoncParseOptions, JsoncRange } from "./schemas.js";
+import type { JsoncVisitorEvent } from "./visitor.js";
+import { visit, visitCollect } from "./visitor.js";
 
 // ============================================================
 // Error Tests
@@ -714,5 +716,135 @@ describe("modify", () => {
 		);
 		const parsed = JSON.parse(result);
 		expect(parsed.version).toBe(2);
+	});
+});
+
+// ============================================================
+// Visitor / Stream Tests
+// ============================================================
+
+describe("visit", () => {
+	it("emits ObjectBegin and ObjectEnd for empty object", async () => {
+		const events = await Effect.runPromise(visit("{}").pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)));
+		const tags = events.map((e) => e._tag);
+		expect(tags).toContain("ObjectBegin");
+		expect(tags).toContain("ObjectEnd");
+	});
+
+	it("emits ArrayBegin and ArrayEnd for empty array", async () => {
+		const events = await Effect.runPromise(visit("[]").pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)));
+		const tags = events.map((e) => e._tag);
+		expect(tags).toContain("ArrayBegin");
+		expect(tags).toContain("ArrayEnd");
+	});
+
+	it("emits LiteralValue for primitives", async () => {
+		const events = await Effect.runPromise(visit("42").pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)));
+		const literals = events.filter(
+			(e): e is Extract<JsoncVisitorEvent, { _tag: "LiteralValue" }> => e._tag === "LiteralValue",
+		);
+		expect(literals).toHaveLength(1);
+		expect(literals[0].value).toBe(42);
+	});
+
+	it("emits ObjectProperty for object keys", async () => {
+		const events = await Effect.runPromise(
+			visit('{ "name": "test" }').pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)),
+		);
+		const props = events.filter(
+			(e): e is Extract<JsoncVisitorEvent, { _tag: "ObjectProperty" }> => e._tag === "ObjectProperty",
+		);
+		expect(props).toHaveLength(1);
+		expect(props[0].property).toBe("name");
+	});
+
+	it("emits Separator events for colons and commas", async () => {
+		const events = await Effect.runPromise(
+			visit('{ "a": 1, "b": 2 }').pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)),
+		);
+		const seps = events.filter((e): e is Extract<JsoncVisitorEvent, { _tag: "Separator" }> => e._tag === "Separator");
+		const chars = seps.map((s) => s.character);
+		expect(chars).toContain(":");
+		expect(chars).toContain(",");
+	});
+
+	it("emits Comment events for line comments", async () => {
+		const events = await Effect.runPromise(
+			visit("// comment\n42").pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)),
+		);
+		const comments = events.filter((e) => e._tag === "Comment");
+		expect(comments.length).toBeGreaterThanOrEqual(1);
+	});
+
+	it("emits Comment events for block comments", async () => {
+		const events = await Effect.runPromise(
+			visit("/* block */ 42").pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)),
+		);
+		const comments = events.filter((e) => e._tag === "Comment");
+		expect(comments.length).toBeGreaterThanOrEqual(1);
+	});
+
+	it("emits Error when comments are disallowed", async () => {
+		const events = await Effect.runPromise(
+			visit("// comment\n42", { disallowComments: true }).pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)),
+		);
+		const errors = events.filter((e): e is Extract<JsoncVisitorEvent, { _tag: "Error" }> => e._tag === "Error");
+		expect(errors.some((e) => e.code === "InvalidCommentToken")).toBe(true);
+	});
+
+	it("tracks path for nested objects", async () => {
+		const events = await Effect.runPromise(
+			visit('{ "a": { "b": 1 } }').pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)),
+		);
+		const literals = events.filter(
+			(e): e is Extract<JsoncVisitorEvent, { _tag: "LiteralValue" }> => e._tag === "LiteralValue",
+		);
+		expect(literals).toHaveLength(1);
+		expect(literals[0].path).toEqual(["a", "b"]);
+	});
+
+	it("tracks path for arrays", async () => {
+		const events = await Effect.runPromise(
+			visit("[1, 2, 3]").pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)),
+		);
+		const literals = events.filter(
+			(e): e is Extract<JsoncVisitorEvent, { _tag: "LiteralValue" }> => e._tag === "LiteralValue",
+		);
+		expect(literals).toHaveLength(3);
+		expect(literals[0].path).toEqual([0]);
+		expect(literals[1].path).toEqual([1]);
+		expect(literals[2].path).toEqual([2]);
+	});
+
+	it("handles mixed nested structures", async () => {
+		const input = '{ "items": [{ "id": 1 }, { "id": 2 }] }';
+		const events = await Effect.runPromise(visit(input).pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)));
+		const literals = events.filter(
+			(e): e is Extract<JsoncVisitorEvent, { _tag: "LiteralValue" }> => e._tag === "LiteralValue",
+		);
+		expect(literals).toHaveLength(2);
+		expect(literals[0].path).toEqual(["items", 0, "id"]);
+		expect(literals[1].path).toEqual(["items", 1, "id"]);
+	});
+});
+
+describe("visitCollect", () => {
+	it("collects only matching events", async () => {
+		const literals = await Effect.runPromise(
+			visitCollect(
+				'{ "x": 1, "y": "hello" }',
+				(e): e is Extract<JsoncVisitorEvent, { _tag: "LiteralValue" }> => e._tag === "LiteralValue",
+			),
+		);
+		expect(literals).toHaveLength(2);
+		expect(literals[0].value).toBe(1);
+		expect(literals[1].value).toBe("hello");
+	});
+
+	it("returns empty array when no events match", async () => {
+		const errors = await Effect.runPromise(
+			visitCollect('{ "valid": true }', (e): e is Extract<JsoncVisitorEvent, { _tag: "Error" }> => e._tag === "Error"),
+		);
+		expect(errors).toHaveLength(0);
 	});
 });

@@ -47,3 +47,6 @@ export {
 	JsoncRange,
 	JsoncToken,
 } from "./schemas.js";
+export type { JsoncVisitorEvent } from "./visitor.js";
+// Visitor/Stream
+export { visit, visitCollect } from "./visitor.js";
