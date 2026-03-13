@@ -1,12 +1,15 @@
 {
-	"name": "@spencerbeggs/pnpm-module-template",
+	"name": "jsonc-effect",
 	"version": "0.0.0",
 	"private": true,
-	"description": "A template repository for developing and deploying Node.js modules from a pnpm monorepo structure.",
-	"homepage": "https://github.com/spencerbeggs/pnpm-module-template#readme",
+	"description": "Pure Effect-TS implementation of a JSONC (JSON with Comments) parser",
+	"homepage": "https://github.com/spencerbeggs/jsonc-effect#readme",
+	"bugs": {
+		"url": "https://github.com/spencerbeggs/jsonc-effect/issues"
+	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/spencerbeggs/pnpm-module-template.git"
+		"url": "https://github.com/spencerbeggs/jsonc-effect.git"
 	},
 	"license": "MIT",
 	"author": {
@@ -40,6 +43,9 @@
 		"typecheck": "turbo run types:check --log-prefix=none --log-order=grouped",
 		"types:check": "tsgo --noEmit"
 	},
+	"dependencies": {
+		"effect": "^3.19.19"
+	},
 	"devDependencies": {
 		"@savvy-web/changesets": "^0.5.1",
 		"@savvy-web/commitlint": "^0.4.1",
@@ -70,7 +76,7 @@
 			{
 				"protocol": "npm",
 				"registry": "https://npm.pkg.github.com/",
-				"directory": "dist/npm",
+				"directory": "dist/github",
 				"access": "public",
 				"provenance": true
 			},

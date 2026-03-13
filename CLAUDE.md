@@ -3,12 +3,53 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with
 code in this repository.
 
+## Project Overview
+
+Pure Effect-TS implementation of a JSONC (JSON with Comments) parser. No
+external parser dependencies — scanner, parser, AST, and formatting are all
+implemented natively in Effect. The only runtime dependency is `effect`.
+
+- **npm package**: `jsonc-effect`
+- **GitHub package**: `@spencerbeggs/jsonc-effect`
+- **Reference**: Microsoft's `jsonc-parser` (MIT) as design reference, not dependency
+- **Roadmap**: GitHub Issues #1-#9 (all closed)
+
 ## Project Status
 
-This is a **base template repository** in initial state. The design
-documentation system (`.claude/` skills and agents) is included but no design
-docs exist yet. To begin planning and documenting architecture decisions, run
-`/design-init` to create your first design document.
+All implementation phases complete. GitHub Issues #1-#9 all closed.
+Polish improvements done: lazy streaming, Function.dual, typed errors,
+JSDoc examples, README enhancements.
+
+- **Tests**: 199 passing
+- **Coverage**: 87.83% statements, 81.68% branches, 98.92% functions
+- **Branch**: `feat/implementation` (pushed, ready for PR)
+
+For architecture details:
+@./.claude/design-docs/jsonc-effect.md
+
+### Key Design Decisions
+
+- Pure functions (not services) — parsing is synchronous and stateless
+- `Data.TaggedError` with `*Base` exports for api-extractor DTS compatibility
+- `Schema.Class` for structural equality on tokens, nodes, options
+- String literals for token types (not numeric enums)
+- `allowTrailingComma` defaults to `true`
+- Platform independent — no `node:` imports anywhere
+
+### Source Structure
+
+```text
+src/
+├── errors.ts              # JsoncParseError, JsoncNodeNotFoundError, JsoncModificationError
+├── schemas.ts             # Token types, AST node types, parse/formatting options
+├── scanner.ts             # Lexer: string → token stream
+├── parse.ts               # parse(), parseTree(), stripComments()
+├── schema-integration.ts  # JsoncFromString, makeJsoncFromString, makeJsoncSchema
+├── ast.ts                 # findNode, findNodeAtOffset, getNodePath, getNodeValue
+├── visitor.ts             # visit(), visitCollect(), JsoncVisitorEvent stream API
+├── format.ts              # format(), modify(), applyEdits(), formatAndApply()
+└── index.ts               # Barrel exports
+```
 
 ## Commands
 
@@ -34,21 +75,17 @@ pnpm run build:prod        # Build production/npm output only
 ### Running a Single Test
 
 ```bash
-# Run tests for a specific package
-pnpm run test -- --filter=@spencerbeggs/ecma-module
-
 # Run a specific test file
-pnpm vitest run pkgs/ecma-module/src/index.test.ts
+pnpm vitest run src/index.test.ts
 ```
 
 ## Architecture
 
-### Monorepo Structure
+### Structure
 
 - **Package Manager**: pnpm with workspaces
 - **Build Orchestration**: Turbo for caching and task dependencies
-- **Packages**: Located in `pkgs/` directory
-- **Shared Configs**: Located in `lib/configs/`
+- **Single package**: Source in `src/`, configs in `lib/configs/`
 
 ### Package Build Pipeline
 
