@@ -20,12 +20,22 @@ All implementation phases complete. GitHub Issues #1-#9 all closed.
 Polish improvements done: lazy streaming, Function.dual, typed errors,
 JSDoc examples, README enhancements.
 
-- **Tests**: 199 passing
-- **Coverage**: 87.83% statements, 81.68% branches, 98.92% functions
+- **Tests**: 207 passing
+- **Coverage**: ~89% statements, ~82% branches, ~99% functions
 - **Branch**: `feat/implementation` (pushed, ready for PR)
 
-For architecture details:
-@./.claude/design-docs/jsonc-effect.md
+For architecture and design details:
+@./.claude/design/jsonc-effect/architecture.md
+
+Component design docs:
+@./.claude/design/jsonc-effect/scanner.md
+@./.claude/design/jsonc-effect/parser.md
+@./.claude/design/jsonc-effect/schema-integration.md
+@./.claude/design/jsonc-effect/ast-navigation.md
+@./.claude/design/jsonc-effect/visitor.md
+@./.claude/design/jsonc-effect/formatting.md
+@./.claude/design/jsonc-effect/error-types.md
+@./.claude/design/jsonc-effect/effect-patterns.md
 
 ### Key Design Decisions
 
