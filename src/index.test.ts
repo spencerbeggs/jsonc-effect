@@ -831,6 +831,28 @@ describe("modify — array operations", () => {
 	});
 });
 
+describe("modify — deep path and edge cases", () => {
+	it("fails with JsoncModificationError for non-existent deep path", async () => {
+		const input = '{ "a": 1 }';
+		const result = await Effect.runPromise(Effect.either(modify(input, ["nonexistent", "deep"], undefined)));
+		expect(result._tag).toBe("Left");
+	});
+
+	it("navigates nested objects to replace value", async () => {
+		const input = '{ "a": { "b": { "c": 1 } } }';
+		const edits = await Effect.runPromise(modify(input, ["a", "b", "c"], 99));
+		const result = await Effect.runPromise(applyEdits(input, edits));
+		expect(JSON.parse(result)).toEqual({ a: { b: { c: 99 } } });
+	});
+
+	it("handles object with nested arrays", async () => {
+		const input = '{ "data": { "items": [1, 2] } }';
+		const edits = await Effect.runPromise(modify(input, ["data", "items", 0], "first"));
+		const result = await Effect.runPromise(applyEdits(input, edits));
+		expect(JSON.parse(result).data.items[0]).toBe("first");
+	});
+});
+
 describe("parse — error message branches", () => {
 	it("reports UnexpectedEndOfString", async () => {
 		const result = await Effect.runPromise(Effect.either(parse('"unterminated')));
