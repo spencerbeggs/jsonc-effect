@@ -185,10 +185,11 @@ function formatImpl(
 		kind = scanner.scan();
 	}
 
-	if (opts.insertFinalNewline && prevTokenEnd >= 0 && prevTokenEnd < text.length) {
+	if (opts.insertFinalNewline && prevTokenEnd >= 0) {
 		const trailing = text.substring(prevTokenEnd);
 		if (!trailing.endsWith(opts.eol)) {
-			addEdit(prevTokenEnd, trailing.length, opts.eol);
+			// Append a final newline, replacing any existing trailing whitespace
+			edits.push({ offset: prevTokenEnd, length: trailing.length, content: opts.eol });
 		}
 	}
 
@@ -302,20 +303,29 @@ function modifyImpl(
 							const valueEnd = scanner.getTokenOffset();
 
 							if (value === undefined) {
-								// Remove property — find the comma
+								// Remove property — find the key start and handle commas
 								let removeStart = valueStart;
-								const removeEnd = valueEnd;
-								// Try to remove leading comma
-								const before = text.substring(0, removeStart).trimEnd();
-								const commaPos = before.lastIndexOf(",");
-								if (commaPos >= 0) {
-									removeStart = commaPos;
-								}
+								let removeEnd = valueEnd;
+
 								// Find the key start
-								const keySearchArea = text.substring(0, removeStart);
+								const keySearchArea = text.substring(0, valueStart);
 								const keyStart = keySearchArea.lastIndexOf(`"${segment}"`);
 								if (keyStart >= 0) {
 									removeStart = keyStart;
+								}
+
+								// Try to remove leading comma + whitespace before the key
+								const beforeKey = text.substring(0, removeStart).trimEnd();
+								const commaPosBefore = beforeKey.lastIndexOf(",");
+								if (commaPosBefore >= 0) {
+									removeStart = commaPosBefore;
+								} else {
+									// No leading comma — remove trailing comma instead
+									const afterValue = text.substring(removeEnd);
+									const trimmedAfter = afterValue.match(/^(\s*,)/);
+									if (trimmedAfter) {
+										removeEnd += trimmedAfter[1].length;
+									}
 								}
 								return [{ offset: removeStart, length: removeEnd - removeStart, content: "" }];
 							}

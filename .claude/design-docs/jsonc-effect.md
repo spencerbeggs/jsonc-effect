@@ -1,11 +1,11 @@
 ---
-status: draft
+status: active
 module: jsonc-effect
 category: architecture
 created: 2026-03-12
-updated: 2026-03-12
-last-synced: 2026-03-12
-completeness: 45
+updated: 2026-03-13
+last-synced: 2026-03-13
+completeness: 85
 related: []
 dependencies: []
 ---
@@ -63,12 +63,16 @@ Effect values, enabling typed error handling and composition with other Effect-b
 
 ```text
 src/
-  errors.ts        # JsoncParseError, JsoncNodeNotFoundError, JsoncModificationError
-  schemas.ts       # JsoncSyntaxKind, JsoncScanError, JsoncToken, JsoncNode, options
-  scanner.ts       # createScanner -- lexer producing token stream
-  parse.ts         # parse, parseTree, stripComments
-  index.ts         # barrel exports
-  index.test.ts    # 42 tests covering errors, schemas, scanner, parser
+  errors.ts              # JsoncParseError, JsoncNodeNotFoundError, JsoncModificationError
+  schemas.ts             # JsoncSyntaxKind, JsoncScanError, JsoncToken, JsoncNode, options
+  scanner.ts             # createScanner -- lexer producing token stream
+  parse.ts               # parse, parseTree, stripComments
+  schema-integration.ts  # JsoncFromString, makeJsoncFromString, makeJsoncSchema
+  ast.ts                 # findNode, findNodeAtOffset, getNodePath, getNodeValue
+  visitor.ts             # visit, visitCollect, JsoncVisitorEvent
+  format.ts              # format, modify, applyEdits, formatAndApply
+  index.ts               # barrel exports
+  index.test.ts          # 90 tests covering all modules
 ```
 
 ### System Components
@@ -154,6 +158,94 @@ JavaScript values or AST nodes.
 - `stripComments` uses a separate scanner pass, replacing comment spans with the optional
   replacement character or removing them entirely
 
+#### Component 5: Schema Integration (`schema-integration.ts`)
+
+**Purpose:** Transform JSONC strings directly into validated Schema types via `Schema.transformOrFail`
+pipelines, enabling typed config file parsing in a single step.
+
+**Exports:**
+
+- `JsoncFromString` -- `Schema.Schema<unknown, string>` that parses JSONC to unknown via
+  `transformOrFail`; the default first stage of a parsing pipeline
+- `makeJsoncFromString(options?)` -- factory that creates a `JsoncFromString` schema with custom
+  `JsoncParseOptions` (e.g., strict mode with `disallowComments: true`)
+- `makeJsoncSchema(targetSchema, options?)` -- composes `makeJsoncFromString` with any target
+  `Schema.Schema<A, I>` to produce a `Schema.Schema<A, string>` in one step
+
+**Implementation details:**
+
+- `transformOrFail` decode calls the core `parse()` function, mapping `JsoncParseError` to
+  `ParseResult.Type` for Schema-compatible error reporting
+- Encode direction serializes values back to JSON via `JSON.stringify`
+- `makeJsoncSchema` uses `Schema.compose` to chain JSONC parsing with downstream validation
+
+#### Component 6: AST Navigation (`ast.ts`)
+
+**Purpose:** Provide pipe-friendly traversal utilities for `JsoncNode` trees produced by `parseTree()`.
+
+**Exports:**
+
+- `findNode` -- locate a node at a specific `JsoncPath` in the AST; supports `Function.dual`
+  (data-first and data-last)
+- `findNodeAtOffset` -- find the innermost node covering a character offset; supports `Function.dual`
+- `getNodePath` -- compute the JSON path to the node at a given offset
+- `getNodeValue` -- evaluate an AST subtree back into a plain JavaScript value
+
+**Implementation details:**
+
+- All functions use `Function.dual(2, ...)` for both data-first (`findNode(root, path)`) and
+  data-last (`pipe(root, findNode(path))`) calling conventions
+- `findNode` navigates property names (strings) and array indices (numbers) in the path
+- `findNodeAtOffset` performs depth-first narrowing to the most specific node
+- `getNodeValue` reconstructs objects, arrays, and primitives from the AST via recursive evaluation
+
+#### Component 7: Visitor (`visitor.ts`)
+
+**Purpose:** SAX-style event stream API for memory-efficient processing of JSONC documents without
+building a full AST.
+
+**Exports:**
+
+- `JsoncVisitorEvent` -- discriminated union of 9 event types: `ObjectBegin`, `ObjectEnd`,
+  `ObjectProperty`, `ArrayBegin`, `ArrayEnd`, `LiteralValue`, `Separator`, `Comment`, `Error`
+- `visit(text, options?)` -- returns `Stream.Stream<JsoncVisitorEvent>` by collecting events via the
+  scanner and emitting them as a `Stream.fromIterable`
+- `visitCollect(text, predicate, options?)` -- collects events matching a type guard predicate into
+  a `ReadonlyArray` via `Stream.filter` and `Stream.runCollect`
+
+**Implementation details:**
+
+- Events carry offset, length, and path context for downstream consumers
+- Uses `createScanner(text, false)` (ignoreTrivia=false) to see all tokens including comments
+- Handles trailing commas, error recovery, and `disallowComments` option
+- Path tracking maintains a mutable array pushed/popped during object and array traversal
+
+#### Component 8: Formatting and Modification (`format.ts`)
+
+**Purpose:** Compute edit operations for JSONC documents without mutation -- format, modify, and
+apply edits as a pure data pipeline.
+
+**Exports:**
+
+- `format(text, range?, options?)` -- compute formatting edits using the scanner to walk tokens
+  and compare actual whitespace against expected indentation
+- `applyEdits` -- apply an array of `JsoncEdit` to source text in reverse offset order to avoid
+  shifting; supports `Function.dual`
+- `formatAndApply(text, range?, options?)` -- convenience function that composes `format` then
+  `applyEdits` in a single `Effect.flatMap` pipeline
+- `modify` -- compute edits to insert, replace, or remove a value at a JSON path; supports
+  `Function.dual` with arity detection via `typeof args[0] === "string" && Array.isArray(args[1])`
+
+**Implementation details:**
+
+- Format uses `createScanner(text, false)` to walk all tokens, computing indentation edits by
+  comparing gap text between tokens against expected whitespace
+- Supports range formatting, `keepLines` mode, `insertFinalNewline`, and configurable
+  `tabSize`/`insertSpaces`/`eol`
+- Modify uses `createScanner(text, true)` (ignoreTrivia=true) to navigate to the target path
+  and compute replacement/insertion/removal edits
+- All functions return `Effect.Effect` values; `modify` may fail with `JsoncModificationError`
+
 ### Architecture Diagram
 
 ```text
@@ -184,14 +276,83 @@ JavaScript values or AST nodes.
                    Effect.succeed    Effect.succeed
                    or Effect.fail    or Effect.fail
                    (JsoncParseError) (JsoncParseError)
+
+               Schema Integration Pipeline
+               ===========================
+                    JSONC String
+                         |
+                         v
+               Schema.transformOrFail
+               (makeJsoncFromString)
+                         |
+                    parse(input)
+                         |
+                         v
+                   unknown value
+                         |
+                   Schema.compose
+               (makeJsoncSchema)
+                         |
+                         v
+                    typed A value
+
+               AST Navigation Pipeline
+               =======================
+               Option<JsoncNode> (from parseTree)
+                         |
+                    Function.dual
+                         |
+              +----------+-----------+
+              |          |           |
+         findNode   findNodeAt   getNodePath
+         (path)     Offset(n)    (offset)
+              |          |           |
+              v          v           v
+         Option<Node> Option<Node> Option<Path>
+
+               Visitor Pipeline
+               ================
+                    JSONC String
+                         |
+                    visit(text)
+                         |
+                    visitImpl()
+                    (scanner-driven)
+                         |
+                         v
+               JsoncVisitorEvent[]
+                         |
+               Stream.fromIterable
+                         |
+                         v
+               Stream<JsoncVisitorEvent>
+
+               Format Pipeline
+               ===============
+                    JSONC String
+                         |
+              +----------+----------+
+              |                     |
+         format(text)          modify(text, path, value)
+         (scanner-driven)      (scanner-driven navigation)
+              |                     |
+              v                     v
+         JsoncEdit[]           JsoncEdit[]
+              |                     |
+              +----------+----------+
+                         |
+                    applyEdits
+                    (reverse offset order)
+                         |
+                         v
+                    formatted string
 ```
 
 ### Current Limitations
 
-- No AST navigation utilities yet (findNodeAtLocation, getNodePath, etc.)
-- No visitor/stream API for incremental processing
-- No formatting or modification operations (format, modify, applyEdits)
-- Error types for navigation and modification are defined but not yet used by any implementation
+- No TSDoc comments on most exports (Issue #9)
+- No README with usage examples (Issue #9)
+- Test coverage has not yet reached the 100% target (Issue #9)
 
 ---
 
@@ -486,6 +647,59 @@ export const parse = (text, options?) =>
 Wraps synchronous parsing in Effect for composition with Effect pipelines, typed error channels,
 and consistent API surface.
 
+### Function.dual for Dual API
+
+```typescript
+export const findNode: {
+  (path: JsoncPath): (root: JsoncNode) => Effect.Effect<Option.Option<JsoncNode>>;
+  (root: JsoncNode, path: JsoncPath): Effect.Effect<Option.Option<JsoncNode>>;
+} = Fn.dual(2, (root: JsoncNode, path: JsoncPath) =>
+  Effect.sync(() => findNodeImpl(root, path))
+);
+```
+
+`Function.dual` enables both data-first (`findNode(root, path)`) and data-last
+(`pipe(root, findNode(path))`) calling conventions. Used in `ast.ts` for `findNode` and
+`findNodeAtOffset`, and in `format.ts` for `applyEdits` and `modify`. The arity argument (2)
+tells Effect how many arguments the data-first form expects.
+
+### Schema.transformOrFail for Parsing Pipelines
+
+```typescript
+export function makeJsoncFromString(options?): Schema.Schema<unknown, string> {
+  return Schema.transformOrFail(Schema.String, Schema.Unknown, {
+    strict: true,
+    decode: (input, _options, ast) => {
+      const program = parse(input);
+      return Effect.mapError(program, (parseError) =>
+        new ParseResult.Type(ast, input, parseError.message)
+      );
+    },
+    encode: (value) => ParseResult.succeed(JSON.stringify(value, null, 2)),
+  });
+}
+```
+
+`Schema.transformOrFail` creates a schema transformation that can fail during decoding. The
+decode direction calls the core `parse()` function, mapping `JsoncParseError` into
+`ParseResult.Type` for Schema-compatible error reporting. Combined with `Schema.compose`, this
+enables end-to-end pipelines: JSONC string to unknown to typed domain object.
+
+### Stream.fromIterable for Visitor Events
+
+```typescript
+export const visit = (text: string, options?): Stream.Stream<JsoncVisitorEvent> => {
+  const events: JsoncVisitorEvent[] = [];
+  visitImpl(text, events, options);
+  return Stream.fromIterable(events);
+};
+```
+
+`Stream.fromIterable` wraps the collected visitor events into an Effect `Stream`, enabling
+downstream consumers to use `Stream.filter`, `Stream.map`, `Stream.runCollect`, and other
+stream combinators. The `visitCollect` helper demonstrates this by chaining
+`Stream.filter(predicate)` with `Stream.runCollect` and `Chunk.toReadonlyArray`.
+
 ### Option.Option for Empty Content
 
 ```typescript
@@ -501,37 +715,49 @@ and a valid parse result (Option.some).
 
 ## Implementation Status
 
-### Phase 1: Foundation (Issues #2-#4)
+### Phase 1: Foundation (Issues #2-#4) -- Complete
 
 - [x] **Issue #2: Project Setup** -- package renamed to jsonc-effect, effect dependency added,
   template code removed
 - [x] **Issue #3: Error Types and Schema Definitions** -- all error types (JsoncParseError,
   JsoncNodeNotFoundError, JsoncModificationError), token schemas (JsoncSyntaxKind, JsoncScanError,
   JsoncToken), AST node schemas (JsoncNode, JsoncNodeType), parse and formatting options
-- [ ] **Issue #4: Scanner and Core Parser** -- scanner complete, parser complete, 42 tests passing;
-  needs final review and merge
+- [x] **Issue #4: Scanner and Core Parser** -- scanner and parser complete with 42 tests for
+  foundation modules
 
-### Phase 2: Schema Integration (Issue #5)
+### Phase 2: Schema Integration (Issue #5) -- Complete
 
-- [ ] **Issue #5: Schema Integration** -- transformOrFail pipelines for parsing JSONC strings
-  directly into validated Schema types
+- [x] **Issue #5: Schema Integration** -- `JsoncFromString`, `makeJsoncFromString`,
+  `makeJsoncSchema` with `Schema.transformOrFail` pipelines for parsing JSONC strings directly
+  into validated Schema types. `makeJsoncSchema` composes JSONC parsing with any target schema in
+  one step. 14 tests covering round-trip encoding, custom options, composed schemas, and error
+  propagation.
 
-### Phase 3: AST Navigation (Issue #6)
+### Phase 3: AST Navigation (Issue #6) -- Complete
 
-- [ ] **Issue #6: AST Navigation** -- findNodeAtLocation, getNodePath, getNodeValue, getNodeType
-  utilities using the JsoncNode AST
+- [x] **Issue #6: AST Navigation** -- `findNode`, `findNodeAtOffset`, `getNodePath`,
+  `getNodeValue` using `Function.dual` for both data-first and data-last calling conventions.
+  Navigates property names and array indices, depth-first offset narrowing, and recursive AST
+  evaluation. 11 tests covering nested navigation, offset lookup, path computation, and value
+  reconstruction.
 
-### Phase 4: Visitor/Stream API (Issue #7)
+### Phase 4: Visitor/Stream API (Issue #7) -- Complete
 
-- [ ] **Issue #7: Visitor/Stream API** -- visit() for walking the AST, stream-based parsing for
-  large documents
+- [x] **Issue #7: Visitor/Stream API** -- `visit()` and `visitCollect()` with `JsoncVisitorEvent`
+  discriminated union (9 event types). Scanner-driven SAX-style event generation emitted via
+  `Stream.fromIterable`. Handles comments, trailing commas, error recovery, and path tracking.
+  13 tests covering object/array events, property events, comments, error events, and
+  `visitCollect` filtering.
 
-### Phase 5: Formatting and Modification (Issue #8)
+### Phase 5: Formatting and Modification (Issue #8) -- Complete
 
-- [ ] **Issue #8: Formatting and Modification** -- format(), modify(), applyEdits() operations
-  using JsoncEdit, JsoncFormattingOptions
+- [x] **Issue #8: Formatting and Modification** -- `format`, `modify`, `applyEdits`,
+  `formatAndApply`. Scanner-driven edit computation (not mutation) with reverse-offset application.
+  Supports range formatting, `keepLines` mode, and configurable indentation. `modify` navigates
+  to target path via scanner for insert/replace/remove operations. 10 tests covering formatting,
+  range formatting, modification, property removal, array operations, and `formatAndApply`.
 
-### Phase 6: Documentation and Coverage (Issue #9)
+### Phase 6: Documentation and Coverage (Issue #9) -- In Progress
 
 - [ ] **Issue #9: Documentation and Full Test Coverage** -- TSDoc comments, README, usage examples,
   100% test coverage target
@@ -542,7 +768,7 @@ and a valid parse result (Option.some).
 
 ### Current Test Coverage
 
-42 tests organized into four suites:
+90 tests organized into eight suites:
 
 **Error types:** Verify `_tag` values, message formatting, pluralization, structural equality, and
 all three error classes (JsoncParseError, JsoncNodeNotFoundError, JsoncModificationError).
@@ -557,6 +783,22 @@ line comments, numbers (integer, float, negative, exponent), error detection.
 booleans, null, comments, trailing commas, error accumulation, disallowComments option,
 allowEmptyContent option, stripComments with and without replacement character.
 
+**Schema Integration (14 tests):** Verify `JsoncFromString` round-trip decode/encode, custom parse
+options via `makeJsoncFromString`, composed schemas via `makeJsoncSchema`, error propagation from
+invalid JSONC, and type-safe config parsing pipelines.
+
+**AST Navigation (11 tests):** Verify `findNode` with nested property paths and array indices,
+`findNodeAtOffset` depth-first narrowing, `getNodePath` offset-to-path computation, `getNodeValue`
+recursive AST evaluation, `Function.dual` data-first and data-last calling conventions.
+
+**Visitor/Stream (13 tests):** Verify `visit()` event emission for objects, arrays, literals,
+properties, separators, and comments. Verify `visitCollect` with type guard predicates. Verify
+error events for invalid input, `disallowComments` option, and trailing comma handling.
+
+**Formatting/Modification (10 tests):** Verify `format` indentation and spacing, range formatting,
+`applyEdits` reverse-offset application, `modify` property insertion/replacement/removal, array
+element operations, `formatAndApply` composition, and `Function.dual` calling conventions.
+
 ### Test Configuration
 
 - **Framework:** Vitest with v8 coverage
@@ -567,23 +809,12 @@ allowEmptyContent option, stripComments with and without replacement character.
 
 ## Future Enhancements
 
-### Phase 2: Schema Integration (Next)
-
-- `transformOrFail` pipelines to parse JSONC strings directly into validated Schema types
-- Enables typed config file parsing: `Schema.decode(MyConfigSchema)(jsoncString)`
-- Primary motivation for the Effect-TS approach
-
-### Phase 3-5: Full Feature Parity
-
-- AST navigation (findNodeAtLocation, etc.) for tooling integration
-- Visitor/stream API for large document processing
-- Format/modify/applyEdits for programmatic JSONC manipulation
-
-### Phase 6: Polish
+### Phase 6: Documentation and Coverage (Issue #9)
 
 - Full TSDoc coverage for all exports
-- README with usage examples
-- 100% test coverage
+- README with comprehensive usage examples
+- 100% test coverage target
+- API documentation generation via api-extractor
 
 ---
 
@@ -601,9 +832,10 @@ allowEmptyContent option, stripComments with and without replacement character.
 
 ---
 
-**Document Status:** Draft -- covers foundation architecture and key design decisions for Phases 1-2.
-Scanner and parser implementation is complete and well-tested. Future phases (navigation, visitor,
-formatting) will require updates to this document as they are implemented.
+**Document Status:** Active -- covers complete implementation architecture across all phases (1-5).
+All core modules (scanner, parser, schema integration, AST navigation, visitor, formatting) are
+implemented and tested with 90 tests total. Only Phase 6 (Documentation and Coverage, Issue #9)
+remains.
 
-**Next Steps:** Update this document when Issue #5 (Schema Integration) implementation begins to
-capture the transformOrFail pipeline architecture.
+**Next Steps:** Update this document when Issue #9 (Documentation and Full Test Coverage) work
+begins. Add TSDoc coverage details and final test coverage metrics once available.
