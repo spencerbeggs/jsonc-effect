@@ -1,8 +1,8 @@
----
-"jsonc-effect": minor
----
+# jsonc-effect
 
-## Features
+## 0.1.0
+
+### Features
 
 Pure Effect-TS JSONC parser with zero external parser dependencies. Only runtime dependency is `effect`.
 

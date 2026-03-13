@@ -8,7 +8,7 @@
 		"maintainer": "C. Spencer Beggs"
 	},
 	"paths": {
-		"designDocs": ".claude/design-docs",
+		"designDocs": ".claude/design",
 		"plans": ".claude/plans",
 		"skills": ".claude/skills",
 		"context": "CLAUDE.md"
@@ -16,7 +16,7 @@
 	"modules": {
 		"jsonc-effect": {
 			"path": ".",
-			"designDocsPath": ".claude/design-docs",
+			"designDocsPath": ".claude/design/jsonc-effect",
 			"categories": ["architecture", "performance", "testing"],
 			"maintainer": "C. Spencer Beggs",
 			"userDocs": {
