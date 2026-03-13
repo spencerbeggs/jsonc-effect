@@ -72,7 +72,7 @@ src/
   visitor.ts             # visit, visitCollect, JsoncVisitorEvent
   format.ts              # format, modify, applyEdits, formatAndApply
   index.ts               # barrel exports
-  index.test.ts          # 185 tests covering all modules
+  index.test.ts          # 199 tests covering all modules
 ```
 
 ### System Components
@@ -350,15 +350,11 @@ apply edits as a pure data pipeline.
 
 ### Current Test Coverage
 
-185 tests passing with the following coverage metrics:
+199 tests passing with the following coverage metrics:
 
-- **Statements:** 86%
-- **Branches:** 81%
-- **Functions:** 98%
-
-### Current Limitations
-
-- No README with usage examples (Issue #9, in progress)
+- **Statements:** 87.83%
+- **Branches:** 81.68%
+- **Functions:** 98.92%
 
 ---
 
@@ -763,12 +759,12 @@ and a valid parse result (Option.some).
   to target path via scanner for insert/replace/remove operations. 10 tests covering formatting,
   range formatting, modification, property removal, array operations, and `formatAndApply`.
 
-### Phase 6: Documentation and Coverage (Issue #9) -- In Progress
+### Phase 6: Documentation and Coverage (Issue #9) -- Complete
 
-- [x] TSDoc comments on all exports
+- [x] TSDoc comments with @example blocks on all exports
 - [x] Design documentation
-- [x] 185 tests passing (86% stmts, 81% branches, 98% functions)
-- [ ] README with usage examples (in progress)
+- [x] 199 tests passing (87.83% stmts, 81.68% branches, 98.92% functions)
+- [x] README with badges, Effect.gen example, pipeline composition, full API reference
 
 ---
 
@@ -776,7 +772,7 @@ and a valid parse result (Option.some).
 
 ### Test Suites
 
-185 tests organized into eight suites:
+199 tests organized into suites:
 
 **Error types:** Verify `_tag` values, message formatting, pluralization, structural equality, and
 all three error classes (JsoncParseError, JsoncNodeNotFoundError, JsoncModificationError).

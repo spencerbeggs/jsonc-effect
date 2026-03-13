@@ -31,6 +31,11 @@ export const JsoncFromString: Schema.Schema<unknown, string> = makeJsoncFromStri
 /**
  * Create a JSONC-to-unknown Schema with custom parse options.
  *
+ * @remarks
+ * The encode direction uses `JSON.stringify` which produces standard
+ * JSON. Comments present in the original JSONC input are not preserved
+ * during round-trip encode/decode.
+ *
  * @example
  * ```typescript
  * import { makeJsoncFromString } from "jsonc-effect"

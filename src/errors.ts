@@ -48,6 +48,19 @@ export const JsoncParseErrorBase = Data.TaggedError("JsoncParseError");
 /**
  * Error raised when JSONC parsing encounters syntax errors.
  * Contains an array of error details with position information.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect";
+ * import { parse, JsoncParseError } from "jsonc-effect";
+ *
+ * const program = parse("{ invalid }").pipe(
+ *   Effect.catchTag("JsoncParseError", (e) => {
+ *     console.error(e.errors); // Array of JsoncParseErrorDetail
+ *     return Effect.succeed({});
+ *   }),
+ * );
+ * ```
  */
 export class JsoncParseError extends JsoncParseErrorBase<{
 	readonly errors: ReadonlyArray<JsoncParseErrorDetail>;
@@ -80,6 +93,19 @@ export const JsoncModificationErrorBase = Data.TaggedError("JsoncModificationErr
 
 /**
  * Error raised when modify() produces invalid edits.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect";
+ * import { modify } from "jsonc-effect";
+ *
+ * const program = modify("{}", ["deep", "path"], 42).pipe(
+ *   Effect.catchTag("JsoncModificationError", (e) => {
+ *     console.error(e.path, e.reason);
+ *     return Effect.succeed([]);
+ *   }),
+ * );
+ * ```
  */
 export class JsoncModificationError extends JsoncModificationErrorBase<{
 	readonly path: ReadonlyArray<string | number>;
@@ -89,3 +115,22 @@ export class JsoncModificationError extends JsoncModificationErrorBase<{
 		return `Modification failed at path [${this.path.join(", ")}]: ${this.reason}`;
 	}
 }
+
+/**
+ * Union of all JSONC error types for exhaustive error handling.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect";
+ * import { parse, type JsoncError } from "jsonc-effect";
+ *
+ * const program = someJsoncOperation.pipe(
+ *   Effect.catchTags({
+ *     JsoncParseError: (e) => Effect.succeed("parse failed"),
+ *     JsoncModificationError: (e) => Effect.succeed("modify failed"),
+ *     JsoncNodeNotFoundError: (e) => Effect.succeed("node not found"),
+ *   }),
+ * );
+ * ```
+ */
+export type JsoncError = JsoncParseError | JsoncNodeNotFoundError | JsoncModificationError;

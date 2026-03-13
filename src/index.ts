@@ -10,7 +10,7 @@
 
 // AST Navigation
 export { findNode, findNodeAtOffset, getNodePath, getNodeValue } from "./ast.js";
-export type { JsoncParseErrorCode } from "./errors.js";
+export type { JsoncError, JsoncParseErrorCode } from "./errors.js";
 // Errors
 export {
 	JsoncModificationError,
