@@ -1,5 +1,8 @@
 # jsonc-effect
 
+[![npm version](https://img.shields.io/npm/v/jsonc-effect)](https://www.npmjs.com/package/jsonc-effect)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Pure Effect-TS implementation of a JSONC (JSON with Comments) parser. No
 external parser dependencies -- scanner, parser, AST, and formatting are all
 implemented natively in Effect.
@@ -76,6 +79,46 @@ const program = parse("{ invalid }").pipe(
     return Effect.succeed({})
   })
 )
+```
+
+### Using Effect.gen
+
+```typescript
+import { parse, parseTree, findNode, getNodeValue } from "jsonc-effect"
+import { Effect, Option } from "effect"
+
+const program = Effect.gen(function* () {
+  // Parse JSONC to AST
+  const root = yield* parseTree('{ "users": [{ "name": "Alice" }] }')
+  if (Option.isNone(root)) return undefined
+
+  // Navigate to a specific node
+  const node = yield* findNode(root.value, ["users", 0, "name"])
+  if (Option.isNone(node)) return undefined
+
+  // Extract the value
+  return yield* getNodeValue(node.value)
+})
+
+const result = Effect.runSync(program)
+// => "Alice"
+```
+
+### Pipeline composition
+
+```typescript
+import { parse, modify, applyEdits } from "jsonc-effect"
+import { Effect, pipe } from "effect"
+
+const input = '{ "version": 1 }'
+
+const updated = pipe(
+  input,
+  modify(["version"], 2),
+  Effect.flatMap((edits) => applyEdits(input, edits)),
+  Effect.runSync,
+)
+// => '{ "version": 2 }'
 ```
 
 ## API
