@@ -197,6 +197,7 @@ All navigation functions support `Function.dual` (data-first and data-last).
 - `JsoncNodeNotFoundError` (`"JsoncNodeNotFoundError"`) -- AST navigation
   failure
 - `JsoncModificationError` (`"JsoncModificationError"`) -- Modification failure
+- `JsoncError` -- Union of all error types for exhaustive `catchTags`
 
 ## Examples
 
@@ -262,6 +263,22 @@ import { Effect } from "effect"
 const ugly = '{"a":1,"b":2}'
 const pretty = Effect.runSync(formatAndApply(ugly))
 // => '{\n  "a": 1,\n  "b": 2\n}'
+```
+
+### Exhaustive error handling
+
+```typescript
+import { parse, modify, applyEdits } from "jsonc-effect"
+import { Effect } from "effect"
+
+const program = parse("{ invalid }").pipe(
+  Effect.catchTags({
+    JsoncParseError: (e) => {
+      console.error(`Parse failed: ${e.message}`)
+      return Effect.succeed({})
+    },
+  })
+)
 ```
 
 ## Parse Options
