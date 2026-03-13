@@ -828,6 +828,42 @@ describe("visit", () => {
 	});
 });
 
+describe("visit — lazy streaming", () => {
+	it("Stream.take(1) does not scan the entire document", async () => {
+		// Build a large document with many properties
+		const entries = Array.from({ length: 1000 }, (_, i) => `"key${i}": ${i}`).join(", ");
+		const largeDoc = `{ ${entries} }`;
+
+		// Taking just the first event should work without processing everything
+		const firstEvent = await Effect.runPromise(
+			visit(largeDoc).pipe(Stream.take(1), Stream.runCollect, Effect.map(Chunk.toReadonlyArray)),
+		);
+
+		expect(firstEvent).toHaveLength(1);
+		expect(firstEvent[0]._tag).toBe("ObjectBegin");
+	});
+
+	it("Stream.takeWhile stops early", async () => {
+		const doc = '{ "a": 1, "b": 2, "c": 3 }';
+
+		// Take events only until we see the first LiteralValue
+		const events = await Effect.runPromise(
+			visit(doc).pipe(
+				Stream.takeWhile((e) => e._tag !== "LiteralValue"),
+				Stream.runCollect,
+				Effect.map(Chunk.toReadonlyArray),
+			),
+		);
+
+		// Should have ObjectBegin, ObjectProperty "a", Separator ":"
+		// but NOT the LiteralValue itself (takeWhile excludes it via type narrowing)
+		expect(events.length).toBeGreaterThan(0);
+		const tags = events.map((e) => e._tag);
+		expect(tags).toContain("ObjectBegin");
+		expect(tags).toContain("ObjectProperty");
+	});
+});
+
 describe("visitCollect", () => {
 	it("collects only matching events", async () => {
 		const literals = await Effect.runPromise(

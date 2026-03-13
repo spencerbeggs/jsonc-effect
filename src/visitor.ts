@@ -2,7 +2,7 @@
  * SAX-style visitor API for JSONC documents.
  *
  * Emits typed events as an Effect Stream, enabling memory-efficient
- * processing of large JSONC documents.
+ * processing of large JSONC documents via lazy evaluation.
  *
  * @packageDocumentation
  */
@@ -51,14 +51,11 @@ export type JsoncVisitorEvent =
 /**
  * Create a Stream of visitor events from JSONC text.
  *
- * Uses the pure Effect scanner to drive the parse. The stream
- * emits events as the visitor encounters tokens.
+ * Uses a lazy generator internally — events are produced on demand
+ * as the stream is consumed, not pre-collected into memory.
  */
-export const visit = (text: string, options?: Partial<JsoncParseOptions>): Stream.Stream<JsoncVisitorEvent> => {
-	const events: JsoncVisitorEvent[] = [];
-	visitImpl(text, events, options);
-	return Stream.fromIterable(events);
-};
+export const visit = (text: string, options?: Partial<JsoncParseOptions>): Stream.Stream<JsoncVisitorEvent> =>
+	Stream.fromIterable(visitGen(text, options));
 
 /**
  * Visit JSONC text and collect all events matching a predicate.
@@ -70,12 +67,12 @@ export const visitCollect = <A extends JsoncVisitorEvent>(
 ): Effect.Effect<ReadonlyArray<A>> =>
 	visit(text, options).pipe(Stream.filter(predicate), Stream.runCollect, Effect.map(Chunk.toReadonlyArray));
 
-function visitImpl(text: string, events: JsoncVisitorEvent[], options?: Partial<JsoncParseOptions>): void {
+function* visitGen(text: string, options?: Partial<JsoncParseOptions>): Generator<JsoncVisitorEvent> {
 	const scanner = createScanner(text, false);
 	const disallowComments = options?.disallowComments ?? false;
 	const path: Array<string | number> = [];
 
-	function scanNext(): JsoncSyntaxKind {
+	function* scanNext(): Generator<JsoncVisitorEvent, JsoncSyntaxKind> {
 		for (;;) {
 			const t = scanner.scan();
 
@@ -105,30 +102,30 @@ function visitImpl(text: string, events: JsoncVisitorEvent[], options?: Partial<
 					default:
 						code = "InvalidSymbol";
 				}
-				events.push({
+				yield {
 					_tag: "Error",
 					code,
 					offset: scanner.getTokenOffset(),
 					length: scanner.getTokenLength(),
-				});
+				};
 			}
 
 			switch (t) {
 				case "LineComment":
 				case "BlockComment":
 					if (disallowComments) {
-						events.push({
+						yield {
 							_tag: "Error",
 							code: "InvalidCommentToken",
 							offset: scanner.getTokenOffset(),
 							length: scanner.getTokenLength(),
-						});
+						};
 					} else {
-						events.push({
+						yield {
 							_tag: "Comment",
 							offset: scanner.getTokenOffset(),
 							length: scanner.getTokenLength(),
-						});
+						};
 					}
 					break;
 				case "Trivia":
@@ -157,195 +154,195 @@ function visitImpl(text: string, events: JsoncVisitorEvent[], options?: Partial<
 		}
 	}
 
-	function visitValue(): boolean {
+	function* visitValue(): Generator<JsoncVisitorEvent, boolean> {
 		const t = scanner.getToken();
 		switch (t) {
 			case "OpenBrace":
-				return visitObject();
+				return yield* visitObject();
 			case "OpenBracket":
-				return visitArray();
+				return yield* visitArray();
 			case "String":
 			case "Number":
 			case "True":
 			case "False":
 			case "Null":
-				events.push({
+				yield {
 					_tag: "LiteralValue",
 					value: getLiteralValue(t, scanner.getTokenValue()),
 					offset: scanner.getTokenOffset(),
 					length: scanner.getTokenLength(),
 					path: [...path],
-				});
-				scanNext();
+				};
+				yield* scanNext();
 				return true;
 			default:
-				events.push({
+				yield {
 					_tag: "Error",
 					code: "ValueExpected",
 					offset: scanner.getTokenOffset(),
 					length: scanner.getTokenLength(),
-				});
+				};
 				return false;
 		}
 	}
 
-	function visitObject(): boolean {
-		events.push({
+	function* visitObject(): Generator<JsoncVisitorEvent, boolean> {
+		yield {
 			_tag: "ObjectBegin",
 			offset: scanner.getTokenOffset(),
 			length: scanner.getTokenLength(),
 			path: [...path],
-		});
+		};
 
-		scanNext(); // skip {
+		yield* scanNext(); // skip {
 		let needsComma = false;
 
 		while (scanner.getToken() !== "CloseBrace" && scanner.getToken() !== "EOF") {
 			if (scanner.getToken() === "Comma") {
-				events.push({
+				yield {
 					_tag: "Separator",
 					character: ",",
 					offset: scanner.getTokenOffset(),
 					length: scanner.getTokenLength(),
-				});
-				scanNext();
+				};
+				yield* scanNext();
 				if (scanner.getToken() === "CloseBrace") {
 					break; // trailing comma
 				}
 			} else if (needsComma) {
-				events.push({
+				yield {
 					_tag: "Error",
 					code: "CommaExpected",
 					offset: scanner.getTokenOffset(),
 					length: scanner.getTokenLength(),
-				});
+				};
 			}
 
 			if (scanner.getToken() !== "String") {
-				events.push({
+				yield {
 					_tag: "Error",
 					code: "PropertyNameExpected",
 					offset: scanner.getTokenOffset(),
 					length: scanner.getTokenLength(),
-				});
-				scanNext();
+				};
+				yield* scanNext();
 				continue;
 			}
 
 			const key = scanner.getTokenValue();
-			events.push({
+			yield {
 				_tag: "ObjectProperty",
 				property: key,
 				offset: scanner.getTokenOffset(),
 				length: scanner.getTokenLength(),
 				path: [...path],
-			});
+			};
 			path.push(key);
 
-			scanNext(); // skip key
+			yield* scanNext(); // skip key
 			if (scanner.getToken() === "Colon") {
-				events.push({
+				yield {
 					_tag: "Separator",
 					character: ":",
 					offset: scanner.getTokenOffset(),
 					length: scanner.getTokenLength(),
-				});
-				scanNext(); // skip colon
+				};
+				yield* scanNext(); // skip colon
 			} else {
-				events.push({
+				yield {
 					_tag: "Error",
 					code: "ColonExpected",
 					offset: scanner.getTokenOffset(),
 					length: scanner.getTokenLength(),
-				});
+				};
 			}
 
-			visitValue();
+			yield* visitValue();
 			path.pop();
 			needsComma = true;
 		}
 
 		if (scanner.getToken() === "CloseBrace") {
-			events.push({
+			yield {
 				_tag: "ObjectEnd",
 				offset: scanner.getTokenOffset(),
 				length: scanner.getTokenLength(),
-			});
-			scanNext();
+			};
+			yield* scanNext();
 		} else {
-			events.push({
+			yield {
 				_tag: "Error",
 				code: "CloseBraceExpected",
 				offset: scanner.getTokenOffset(),
 				length: scanner.getTokenLength(),
-			});
+			};
 		}
 
 		return true;
 	}
 
-	function visitArray(): boolean {
-		events.push({
+	function* visitArray(): Generator<JsoncVisitorEvent, boolean> {
+		yield {
 			_tag: "ArrayBegin",
 			offset: scanner.getTokenOffset(),
 			length: scanner.getTokenLength(),
 			path: [...path],
-		});
+		};
 
-		scanNext(); // skip [
+		yield* scanNext(); // skip [
 		let index = 0;
 		let needsComma = false;
 
 		while (scanner.getToken() !== "CloseBracket" && scanner.getToken() !== "EOF") {
 			if (scanner.getToken() === "Comma") {
-				events.push({
+				yield {
 					_tag: "Separator",
 					character: ",",
 					offset: scanner.getTokenOffset(),
 					length: scanner.getTokenLength(),
-				});
-				scanNext();
+				};
+				yield* scanNext();
 				if (scanner.getToken() === "CloseBracket") {
 					break; // trailing comma
 				}
 			} else if (needsComma) {
-				events.push({
+				yield {
 					_tag: "Error",
 					code: "CommaExpected",
 					offset: scanner.getTokenOffset(),
 					length: scanner.getTokenLength(),
-				});
+				};
 			}
 
 			path.push(index);
-			visitValue();
+			yield* visitValue();
 			path.pop();
 			index++;
 			needsComma = true;
 		}
 
 		if (scanner.getToken() === "CloseBracket") {
-			events.push({
+			yield {
 				_tag: "ArrayEnd",
 				offset: scanner.getTokenOffset(),
 				length: scanner.getTokenLength(),
-			});
-			scanNext();
+			};
+			yield* scanNext();
 		} else {
-			events.push({
+			yield {
 				_tag: "Error",
 				code: "CloseBracketExpected",
 				offset: scanner.getTokenOffset(),
 				length: scanner.getTokenLength(),
-			});
+			};
 		}
 
 		return true;
 	}
 
 	// Start parsing
-	scanNext();
+	yield* scanNext();
 	if (scanner.getToken() !== "EOF") {
-		visitValue();
+		yield* visitValue();
 	}
 }
