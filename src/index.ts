@@ -8,10 +8,14 @@
  * @packageDocumentation
  */
 
+// ---------------------------------------------------------------------------
 // AST Navigation
+// ---------------------------------------------------------------------------
 export { findNode, findNodeAtOffset, getNodePath, getNodeValue } from "./ast.js";
-export type { JsoncError, JsoncParseErrorCode } from "./errors.js";
+// ---------------------------------------------------------------------------
 // Errors
+// ---------------------------------------------------------------------------
+export type { JsoncError, JsoncParseErrorCode } from "./errors.js";
 export {
 	JsoncModificationError,
 	JsoncModificationErrorBase,
@@ -21,32 +25,32 @@ export {
 	JsoncParseErrorBase,
 	JsoncParseErrorDetail,
 } from "./errors.js";
-// Formatting and Modification
+// ---------------------------------------------------------------------------
+// Formatting & Modification
+// ---------------------------------------------------------------------------
 export { applyEdits, format, formatAndApply, modify } from "./format.js";
+// ---------------------------------------------------------------------------
 // Parser
+// ---------------------------------------------------------------------------
 export { parse, parseTree, stripComments } from "./parse.js";
-export type { JsoncScanner } from "./scanner.js";
+// ---------------------------------------------------------------------------
 // Scanner
+// ---------------------------------------------------------------------------
+export type { JsoncScanner } from "./scanner.js";
 export { createScanner } from "./scanner.js";
 
+// ---------------------------------------------------------------------------
 // Schema Integration
+// ---------------------------------------------------------------------------
 export { JsoncFromString, makeJsoncFromString, makeJsoncSchema } from "./schema-integration.js";
-export type {
-	JsoncNodeType,
-	JsoncPath,
-	JsoncScanError,
-	JsoncSegment,
-	JsoncSyntaxKind,
-} from "./schemas.js";
-// Schemas
-export {
-	JsoncEdit,
-	JsoncFormattingOptions,
-	JsoncNode,
-	JsoncParseOptions,
-	JsoncRange,
-	JsoncToken,
-} from "./schemas.js";
+// ---------------------------------------------------------------------------
+// Schemas & Types
+// ---------------------------------------------------------------------------
+export type { JsoncNodeType, JsoncPath, JsoncScanError, JsoncSegment, JsoncSyntaxKind } from "./schemas.js";
+export { JsoncEdit, JsoncFormattingOptions, JsoncNode, JsoncParseOptions, JsoncRange, JsoncToken } from "./schemas.js";
+
+// ---------------------------------------------------------------------------
+// Visitor / Stream
+// ---------------------------------------------------------------------------
 export type { JsoncVisitorEvent } from "./visitor.js";
-// Visitor/Stream
 export { visit, visitCollect } from "./visitor.js";

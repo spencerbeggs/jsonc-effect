@@ -55,6 +55,9 @@ export function makeJsoncFromString(options?: Partial<JsoncParseOptions>): Schem
 			return Effect.mapError(program, (parseError) => new ParseResult.Type(ast, input, parseError.message));
 		},
 		encode: (value) => ParseResult.succeed(JSON.stringify(value, null, 2)),
+	}).annotations({
+		title: "JsoncFromString",
+		description: "Parse a JSONC string into an unknown JavaScript value",
 	});
 }
 
