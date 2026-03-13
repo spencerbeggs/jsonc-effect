@@ -1,10 +1,10 @@
----
-"jsonc-effect": minor
----
+# jsonc-effect
 
-## Features
+## 0.1.0
 
-Pure Effect-TS JSONC parser with zero external parser dependencies. Only runtime dependency is `effect`.
+### Features
+
+* [`0572382`](https://github.com/spencerbeggs/pnpm-module-template/commit/0572382ad0a1718a4245e2b3c99da3a474518b20) Pure Effect-TS JSONC parser with zero external parser dependencies. Only runtime dependency is `effect`.
 
 - Full JSONC scanner and recursive descent parser with `parse()`, `parseTree()`, and `stripComments()` supporting line comments (`//`), block comments (`/* */`), and trailing commas
 - Schema integration with `JsoncFromString`, `makeJsoncFromString(options?)`, and `makeJsoncSchema(schema, options?)` for end-to-end typed JSONC parsing
