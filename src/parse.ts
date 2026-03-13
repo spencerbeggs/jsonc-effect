@@ -30,7 +30,7 @@ export const parse: {
 					new JsoncParseError({
 						errors,
 						text,
-						options,
+						...(options !== undefined ? { options } : {}),
 					}),
 				);
 			}
@@ -56,7 +56,7 @@ export const parseTree: {
 					new JsoncParseError({
 						errors,
 						text,
-						options,
+						...(options !== undefined ? { options } : {}),
 					}),
 				);
 			}

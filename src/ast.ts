@@ -31,8 +31,10 @@ export const findNodeAtOffset: {
 /**
  * Get the JSON path to the node at a specific offset.
  */
-export const getNodePath = (root: JsoncNode, targetOffset: number): Effect.Effect<Option.Option<JsoncPath>> =>
-	Effect.sync(() => buildPath(root, targetOffset, []));
+export const getNodePath: {
+	(targetOffset: number): (root: JsoncNode) => Effect.Effect<Option.Option<JsoncPath>>;
+	(root: JsoncNode, targetOffset: number): Effect.Effect<Option.Option<JsoncPath>>;
+} = Fn.dual(2, (root: JsoncNode, targetOffset: number) => Effect.sync(() => buildPath(root, targetOffset, [])));
 
 /**
  * Evaluate a node subtree into a plain JavaScript value.

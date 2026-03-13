@@ -5,6 +5,7 @@
  */
 
 import { Data, Schema } from "effect";
+import type { JsoncParseOptions } from "./schemas.js";
 
 /**
  * Error codes for JSONC parse errors.
@@ -51,7 +52,7 @@ export const JsoncParseErrorBase = Data.TaggedError("JsoncParseError");
 export class JsoncParseError extends JsoncParseErrorBase<{
 	readonly errors: ReadonlyArray<JsoncParseErrorDetail>;
 	readonly text: string;
-	readonly options?: unknown;
+	readonly options?: Partial<JsoncParseOptions>;
 }> {
 	get message(): string {
 		const count = this.errors.length;
