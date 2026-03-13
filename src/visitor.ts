@@ -53,6 +53,22 @@ export type JsoncVisitorEvent =
  *
  * Uses a lazy generator internally — events are produced on demand
  * as the stream is consumed, not pre-collected into memory.
+ *
+ * @example
+ * ```ts
+ * import { Chunk, Effect, Stream } from "effect";
+ * import { visit } from "@spencerbeggs/jsonc-effect";
+ *
+ * // Collect all events
+ * const all = Effect.runSync(
+ *   visit('{ "a": 1 }').pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray)),
+ * );
+ *
+ * // Take only the first 3 events (lazy — won't scan entire document)
+ * const first3 = Effect.runSync(
+ *   visit(largeDoc).pipe(Stream.take(3), Stream.runCollect, Effect.map(Chunk.toReadonlyArray)),
+ * );
+ * ```
  */
 export const visit = (text: string, options?: Partial<JsoncParseOptions>): Stream.Stream<JsoncVisitorEvent> =>
 	Stream.fromIterable(visitGen(text, options));

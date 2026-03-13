@@ -14,6 +14,22 @@ import type { JsoncNode, JsoncPath } from "./schemas.js";
  *
  * Traverses the AST following property names (strings) and
  * array indices (numbers) in the path.
+ *
+ * @example
+ * ```ts
+ * import { Effect, Option, pipe } from "effect";
+ * import { parseTree, findNode } from "@spencerbeggs/jsonc-effect";
+ *
+ * // Data-first
+ * const node = Effect.gen(function* () {
+ *   const root = yield* parseTree('{ "a": { "b": 1 } }');
+ *   if (Option.isNone(root)) return Option.none();
+ *   return yield* findNode(root.value, ["a", "b"]);
+ * });
+ *
+ * // Data-last (pipeline)
+ * const node2 = pipe(root, findNode(["a", "b"]));
+ * ```
  */
 export const findNode: {
 	(path: JsoncPath): (root: JsoncNode) => Effect.Effect<Option.Option<JsoncNode>>;
@@ -22,6 +38,15 @@ export const findNode: {
 
 /**
  * Find the innermost node covering a character offset.
+ *
+ * @example
+ * ```ts
+ * import { Effect, Option, pipe } from "effect";
+ * import { parseTree, findNodeAtOffset } from "@spencerbeggs/jsonc-effect";
+ *
+ * // Data-last (pipeline)
+ * const node = pipe(root, findNodeAtOffset(5));
+ * ```
  */
 export const findNodeAtOffset: {
 	(offset: number): (root: JsoncNode) => Effect.Effect<Option.Option<JsoncNode>>;
@@ -30,6 +55,15 @@ export const findNodeAtOffset: {
 
 /**
  * Get the JSON path to the node at a specific offset.
+ *
+ * @example
+ * ```ts
+ * import { Effect, pipe } from "effect";
+ * import { parseTree, getNodePath } from "@spencerbeggs/jsonc-effect";
+ *
+ * // Data-last (pipeline)
+ * const path = pipe(root, getNodePath(5));
+ * ```
  */
 export const getNodePath: {
 	(targetOffset: number): (root: JsoncNode) => Effect.Effect<Option.Option<JsoncPath>>;

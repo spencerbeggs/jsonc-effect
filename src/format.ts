@@ -17,6 +17,15 @@ import type { JsoncEdit, JsoncFormattingOptions, JsoncPath, JsoncRange, JsoncSyn
  *
  * Does NOT mutate the input — returns an array of edits to apply
  * with applyEdits().
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect";
+ * import { format, applyEdits } from "@spencerbeggs/jsonc-effect";
+ *
+ * const edits = Effect.runSync(format('{"a":1}'));
+ * const formatted = Effect.runSync(applyEdits('{"a":1}', edits));
+ * ```
  */
 export const format = (
 	text: string,
@@ -54,6 +63,23 @@ export const formatAndApply = (
 /**
  * Compute edits to insert, replace, or remove a value at a JSON path.
  * Setting value to undefined removes the property/element.
+ *
+ * @example
+ * ```ts
+ * import { Effect, pipe } from "effect";
+ * import { modify, applyEdits } from "@spencerbeggs/jsonc-effect";
+ *
+ * // Data-first
+ * const edits = Effect.runSync(modify('{ "a": 1 }', ["a"], 2));
+ *
+ * // Data-last (pipeline)
+ * const result = pipe(
+ *   '{ "a": 1 }',
+ *   modify(["a"], 2),
+ *   Effect.flatMap((edits) => applyEdits('{ "a": 1 }', edits)),
+ *   Effect.runSync,
+ * );
+ * ```
  */
 export const modify: {
 	(

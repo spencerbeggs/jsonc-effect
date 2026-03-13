@@ -18,6 +18,18 @@ import type { JsoncNode, JsoncParseOptions, JsoncSyntaxKind } from "./schemas.js
  * @param text - The JSONC string to parse
  * @param options - Optional parse options
  * @returns An Effect that produces the parsed value or fails with JsoncParseError
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect";
+ * import { parse } from "@spencerbeggs/jsonc-effect";
+ *
+ * // Basic usage
+ * const value = Effect.runSync(parse('{ "key": 42 }'));
+ *
+ * // With options
+ * const strict = Effect.runSync(parse('{ "key": 42 }', { disallowComments: true }));
+ * ```
  */
 export const parse: {
 	(text: string): Effect.Effect<unknown, JsoncParseError>;
@@ -44,6 +56,17 @@ export const parse: {
  * @param text - The JSONC string to parse
  * @param options - Optional parse options
  * @returns An Effect that produces Option.some(node) or Option.none() for empty content
+ *
+ * @example
+ * ```ts
+ * import { Effect, Option } from "effect";
+ * import { parseTree } from "@spencerbeggs/jsonc-effect";
+ *
+ * const result = Effect.runSync(parseTree('{ "a": 1 }'));
+ * if (Option.isSome(result)) {
+ *   console.log(result.value.type); // "object"
+ * }
+ * ```
  */
 export const parseTree: {
 	(text: string): Effect.Effect<Option.Option<JsoncNode>, JsoncParseError>;
@@ -70,6 +93,15 @@ export const parseTree: {
  * @param text - The JSONC string to strip comments from
  * @param replaceCh - Optional character to replace comments with (preserves offsets)
  * @returns An Effect that produces the text with comments removed
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect";
+ * import { stripComments } from "@spencerbeggs/jsonc-effect";
+ *
+ * const json = Effect.runSync(stripComments('{ "a": 1 // comment\n}'));
+ * // '{ "a": 1           \n}'
+ * ```
  */
 export const stripComments: {
 	(text: string): Effect.Effect<string>;
