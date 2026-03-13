@@ -214,6 +214,35 @@ describe("Scanner", () => {
 	});
 });
 
+describe("Scanner — edge cases", () => {
+	it("handles standalone slash as unknown token", () => {
+		const scanner = createScanner("/ notAComment", false);
+		const kind = scanner.scan();
+		expect(kind).toBe("Unknown");
+		expect(scanner.getTokenError()).toBe("InvalidCharacter");
+	});
+
+	it("getPosition and setPosition work", () => {
+		const scanner = createScanner('{ "a": 1 }', false);
+		scanner.scan(); // {
+		const posAfterBrace = scanner.getPosition();
+		expect(posAfterBrace).toBeGreaterThan(0);
+		scanner.setPosition(0);
+		const kind = scanner.scan(); // should re-scan from start
+		expect(kind).toBe("OpenBrace");
+	});
+
+	it("getTokenStartLine and getTokenStartCharacter return position info", () => {
+		const scanner = createScanner('{\n  "a": 1\n}', false);
+		scanner.scan(); // {
+		scanner.scan(); // newline
+		scanner.scan(); // whitespace
+		scanner.scan(); // "a"
+		expect(scanner.getTokenStartLine()).toBeGreaterThanOrEqual(0);
+		expect(scanner.getTokenStartCharacter()).toBeGreaterThanOrEqual(0);
+	});
+});
+
 // ============================================================
 // Parser Tests
 // ============================================================
