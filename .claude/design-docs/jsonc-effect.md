@@ -3,9 +3,9 @@ status: current
 module: jsonc-effect
 category: architecture
 created: 2026-03-12
-updated: 2026-03-12
-last-synced: 2026-03-12
-completeness: 90
+updated: 2026-03-13
+last-synced: 2026-03-13
+completeness: 95
 related: []
 dependencies: []
 ---
@@ -817,9 +817,18 @@ element operations, `formatAndApply` composition, and `Function.dual` calling co
 
 ## Future Enhancements
 
-### Remaining Work (Issue #9)
+### Completed Polish (2026-03-13)
 
-- README with comprehensive usage examples
+- Lazy generator-based streaming visitor (was eager array pre-collection)
+- Function.dual for getNodePath (pipe-compatible calling convention)
+- Typed JsoncParseError.options as Partial\<JsoncParseOptions\>
+- @example JSDoc blocks on all public API functions
+
+### Remaining
+
+- README enhancements: badges, Effect.gen examples, pipeline composition
+- JsoncString branded type for validated JSONC input
+- Performance benchmarks vs Microsoft jsonc-parser
 - API documentation generation via api-extractor
 
 ---
@@ -828,7 +837,7 @@ element operations, `formatAndApply` composition, and `Function.dual` calling co
 
 **Package:**
 
-- `README.md` -- Package overview (stub)
+- `README.md` -- Package overview with usage examples
 - `CLAUDE.md` -- Development guide and conventions
 
 **External References:**
@@ -838,10 +847,11 @@ element operations, `formatAndApply` composition, and `Function.dual` calling co
 
 ---
 
-**Document Status:** Current -- covers complete implementation architecture across all phases (1-5).
-All core modules (scanner, parser, schema integration, AST navigation, visitor, formatting) are
-implemented and tested with 185 tests (86% stmts, 81% branches, 98% functions). Phase 6 (Issue #9)
-is in progress: TSDoc comments and design docs are complete, README still needed.
+**Document Status:** Current -- covers complete implementation architecture across all phases (1-5)
+plus polish improvements. All core modules (scanner, parser, schema integration, AST navigation,
+visitor, formatting) are implemented and tested with 187 tests. Visitor uses lazy generator-based
+streaming. All public functions have @example JSDoc blocks and dual calling conventions where
+applicable.
 
-**Next Steps:** Complete README with usage examples. Update this document with final coverage
-metrics once README and any remaining tests are added.
+**Next Steps:** README enhancements (badges, Effect.gen examples). Consider JsoncString branded
+type and performance benchmarks.
