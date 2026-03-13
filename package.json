@@ -3,6 +3,23 @@
 	"version": "0.1.0",
 	"private": true,
 	"description": "Pure Effect-TS implementation of a JSONC (JSON with Comments) parser",
+	"keywords": [
+		"jsonc",
+		"json",
+		"json-with-comments",
+		"parser",
+		"scanner",
+		"lexer",
+		"ast",
+		"effect",
+		"effect-ts",
+		"schema",
+		"typed-errors",
+		"config",
+		"tsconfig",
+		"formatting",
+		"visitor"
+	],
 	"homepage": "https://github.com/spencerbeggs/jsonc-effect#readme",
 	"bugs": {
 		"url": "https://github.com/spencerbeggs/jsonc-effect/issues"
