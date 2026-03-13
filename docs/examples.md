@@ -165,13 +165,7 @@ const configs = Effect.runSync(
 import { makeJsoncFromString, makeJsoncSchema } from "jsonc-effect"
 import { Schema } from "effect"
 
-// Strict mode: no comments allowed
-const StrictJsonc = makeJsoncFromString({
-  disallowComments: true,
-  allowTrailingComma: false,
-})
-
-// Compose with a domain schema
+// Compose JSONC parsing with a domain schema in one step
 const AppConfig = Schema.Struct({
   name: Schema.String,
   port: Schema.Number,
@@ -186,6 +180,15 @@ const config = Schema.decodeUnknownSync(AppConfigFromJsonc)(`{
   // debug defaults to false
 }`)
 // => { name: "my-app", port: 3000, debug: false }
+
+// Strict mode: disallow comments and trailing commas
+const StrictAppConfig = makeJsoncSchema(AppConfig, {
+  disallowComments: true,
+  allowTrailingComma: false,
+})
+
+// This throws — comments are not allowed in strict mode
+Schema.decodeUnknownSync(StrictAppConfig)('{ "name": "app", "port": 80 // prod\n}')
 ```
 
 ## Async integration with Effect.runPromise
@@ -195,8 +198,9 @@ import { parse, format, applyEdits } from "jsonc-effect"
 import { Effect } from "effect"
 
 async function formatConfig(content: string): Promise<string> {
-  const edits = await Effect.runPromise(format(content))
-  return Effect.runPromise(applyEdits(content, edits))
+  return Effect.runPromise(
+    format(content).pipe(Effect.flatMap((edits) => applyEdits(content, edits)))
+  )
 }
 
 // Composing with other async code
