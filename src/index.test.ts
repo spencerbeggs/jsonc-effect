@@ -638,6 +638,43 @@ describe("getNodePath", () => {
 	});
 });
 
+describe("getNodePath — edge cases", () => {
+	it("returns path to property key (not value)", async () => {
+		const text = '{ "myKey": 42 }';
+		const tree = await Effect.runPromise(parseTree(text));
+		if (Option.isSome(tree)) {
+			// offset 3 is within "myKey" string
+			const path = await Effect.runPromise(getNodePath(tree.value, 3));
+			expect(Option.isSome(path)).toBe(true);
+			if (Option.isSome(path)) {
+				expect(path.value).toEqual(["myKey"]);
+			}
+		}
+	});
+
+	it("returns path for array elements", async () => {
+		const text = "[10, 20, 30]";
+		const tree = await Effect.runPromise(parseTree(text));
+		if (Option.isSome(tree)) {
+			// offset 5 is within "20"
+			const path = await Effect.runPromise(getNodePath(tree.value, 5));
+			expect(Option.isSome(path)).toBe(true);
+			if (Option.isSome(path)) {
+				expect(path.value).toEqual([1]);
+			}
+		}
+	});
+
+	it("returns none for offset outside root", async () => {
+		const text = '{ "a": 1 }';
+		const tree = await Effect.runPromise(parseTree(text));
+		if (Option.isSome(tree)) {
+			const path = await Effect.runPromise(getNodePath(tree.value, 100));
+			expect(Option.isNone(path)).toBe(true);
+		}
+	});
+});
+
 describe("getNodeValue", () => {
 	it("reconstructs object from AST", async () => {
 		const text = '{ "a": 1, "b": "two" }';
