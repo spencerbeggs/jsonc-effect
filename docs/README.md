@@ -18,3 +18,4 @@ jsonc-effect provides a complete JSONC toolchain built on Effect-TS:
 | AST Navigation | `findNode`, `findNodeAtOffset`, `getNodePath`, `getNodeValue` |
 | Visitor | `visit`, `visitCollect` for SAX-style event streaming |
 | Formatting | `format`, `modify`, `applyEdits`, `formatAndApply` |
+| Equality | `equals`, `equalsValue` for semantic document comparison |

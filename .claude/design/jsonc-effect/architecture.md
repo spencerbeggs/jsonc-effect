@@ -13,6 +13,7 @@ related:
   - ast-navigation.md
   - visitor.md
   - formatting.md
+  - equality.md
   - error-types.md
   - effect-patterns.md
 dependencies: []
@@ -83,6 +84,7 @@ src/
   ast.ts                 # findNode, findNodeAtOffset, getNodePath, getNodeValue
   visitor.ts             # visit, visitCollect, JsoncVisitorEvent
   format.ts              # format, modify, applyEdits, formatAndApply
+  equality.ts            # equals, equalsValue -- semantic JSONC comparison
   index.ts               # barrel exports
   index.test.ts          # 207 tests covering all modules
 ```
@@ -99,6 +101,7 @@ src/
 | AST Navigation | `ast.ts` | Pipe-friendly traversal of parse trees |
 | Visitor | `visitor.ts` | SAX-style event stream API |
 | Formatting | `format.ts` | Edit computation for formatting and modification |
+| Equality | `equality.ts` | Semantic JSONC document comparison |
 
 See individual design docs for detailed component documentation.
 
@@ -202,6 +205,25 @@ See individual design docs for detailed component documentation.
                          |
                          v
                     formatted string
+
+               Equality Pipeline
+               =================
+                    JSONC String(s)
+                         |
+              +----------+----------+
+              |                     |
+         equals(a, b)         equalsValue(a, val)
+         (parses both)        (parses one)
+              |                     |
+         Effect.all([             parse(a)
+           parse(a),                |
+           parse(b)])               v
+              |               deepEqual(parsed, val)
+              v                     |
+         deepEqual(a, b)           v
+              |               Effect<boolean>
+              v
+         Effect<boolean>
 ```
 
 ---
@@ -237,7 +259,7 @@ See individual design docs for detailed component documentation.
 | Recursive Descent | `parse.ts` | Natural fit for JSON grammar |
 | Closure-Based State Machine | `scanner.ts` | Encapsulates scanner state without classes |
 | Effect.sync Wrapping | `parse.ts` | Synchronous code in Effect pipelines |
-| Function.dual | `ast.ts`, `format.ts` | Data-first and data-last calling conventions |
+| Function.dual | `ast.ts`, `format.ts`, `equality.ts` | Data-first and data-last calling conventions |
 | Schema.transformOrFail | `schema-integration.ts` | JSONC to typed domain objects |
 
 ---
@@ -370,6 +392,7 @@ parsing pipeline.
 - [AST Navigation](ast-navigation.md) -- findNode, findNodeAtOffset, getNodePath, getNodeValue
 - [Visitor](visitor.md) -- SAX-style event stream API
 - [Formatting](formatting.md) -- format, modify, applyEdits, formatAndApply
+- [Equality](equality.md) -- Semantic JSONC document comparison
 - [Error Types](error-types.md) -- TaggedError pattern, error codes
 - [Effect Patterns](effect-patterns.md) -- Catalog of Effect patterns used
 

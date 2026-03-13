@@ -12,6 +12,7 @@ Pure [Effect](https://effect.website) JSONC (JSON with Comments) parser with no 
 - **Zero parser dependencies** -- `effect` is the sole runtime dependency
 - **Schema integration** -- parse JSONC strings directly into validated types
 - **Full toolchain** -- scanner, parser, AST navigation, visitor stream, formatting, and modification
+- **Equality comparisons** -- compare JSONC documents semantically, ignoring comments, formatting, and key ordering
 - **Safe by default** -- returns `unknown` (not `any`) and `Option` (not `undefined`)
 
 ## Installation
@@ -30,6 +31,22 @@ const result = Effect.runSync(
   parse('{ "key": 42, /* comment */ }')
 )
 // => { key: 42 }
+```
+
+Semantically compare two JSONC documents:
+
+```typescript
+import { equals } from "jsonc-effect"
+import { Effect } from "effect"
+
+// Semantically equal despite different formatting, comments, and key order
+const same = Effect.runSync(
+  equals(
+    '{ "foo": 1, "bar": 2 }',
+    '{ "bar": 2, /* comment */ "foo": 1 }'
+  )
+)
+// => true
 ```
 
 ## FAQ

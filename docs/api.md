@@ -107,6 +107,27 @@ Compute edits to insert, replace, or remove a value at a JSON path (supports
 
 - **Returns:** `Effect<JsoncEdit[], JsoncModificationError>`
 
+## Equality
+
+### `equals(self, that)`
+
+Compare two JSONC strings for semantic equality. Parses both strings and
+deep-compares the resulting values. Ignores comments, whitespace, formatting,
+and object key ordering. Array order is significant.
+
+Supports `Function.dual` (data-first and data-last).
+
+- **Returns:** `Effect<boolean, JsoncParseError>`
+
+### `equalsValue(self, value)`
+
+Compare a JSONC string against a JavaScript value. Parses the JSONC string and
+deep-compares against the provided value. Same comparison semantics as `equals`.
+
+Supports `Function.dual` (data-first and data-last).
+
+- **Returns:** `Effect<boolean, JsoncParseError>`
+
 ## Visitor / Stream
 
 ### `visit(text, options?)`
