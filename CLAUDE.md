@@ -12,17 +12,17 @@ implemented natively in Effect. The only runtime dependency is `effect`.
 - **npm package**: `jsonc-effect`
 - **GitHub package**: `@spencerbeggs/jsonc-effect`
 - **Reference**: Microsoft's `jsonc-parser` (MIT) as design reference, not dependency
-- **Roadmap**: See GitHub Issue #1 for full implementation roadmap
+- **Roadmap**: GitHub Issues #1-#9 (all closed)
 
 ## Project Status
 
-All implementation phases (Issues #2-#8) are complete. Issue #9
-(Documentation) is in progress — TSDoc comments and design docs are done,
-README with usage examples still needed.
+All implementation phases complete. GitHub Issues #1-#9 all closed.
+Polish improvements done: lazy streaming, Function.dual, typed errors,
+JSDoc examples, README enhancements.
 
-- **Tests**: 185 passing
-- **Coverage**: 86% statements, 81% branches, 98% functions
-- **Branch**: `feat/implementation` (13 commits)
+- **Tests**: 199 passing
+- **Coverage**: 87.83% statements, 81.68% branches, 98.92% functions
+- **Branch**: `feat/implementation` (pushed, ready for PR)
 
 For architecture details:
 @./.claude/design-docs/jsonc-effect.md
