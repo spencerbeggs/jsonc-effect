@@ -14,6 +14,19 @@ implemented natively in Effect. The only runtime dependency is `effect`.
 - **Reference**: Microsoft's `jsonc-parser` (MIT) as design reference, not dependency
 - **Roadmap**: See GitHub Issue #1 for full implementation roadmap
 
+## Project Status
+
+All implementation phases (Issues #2-#8) are complete. Issue #9
+(Documentation) is in progress — TSDoc comments and design docs are done,
+README with usage examples still needed.
+
+- **Tests**: 185 passing
+- **Coverage**: 86% statements, 81% branches, 98% functions
+- **Branch**: `feat/implementation` (13 commits)
+
+For architecture details:
+@./.claude/design-docs/jsonc-effect.md
+
 ### Key Design Decisions
 
 - Pure functions (not services) — parsing is synchronous and stateless
@@ -33,6 +46,7 @@ src/
 ├── parse.ts               # parse(), parseTree(), stripComments()
 ├── schema-integration.ts  # JsoncFromString, makeJsoncFromString, makeJsoncSchema
 ├── ast.ts                 # findNode, findNodeAtOffset, getNodePath, getNodeValue
+├── visitor.ts             # visit(), visitCollect(), JsoncVisitorEvent stream API
 ├── format.ts              # format(), modify(), applyEdits(), formatAndApply()
 └── index.ts               # Barrel exports
 ```
