@@ -12,11 +12,9 @@ import type { JsoncParseError } from "./errors.js";
 import { parse } from "./parse.js";
 
 /**
- * Deep-compare two values for equality.
+ * Deep-compare two plain JS values for structural equality (key-order independent for objects, order sensitive for arrays).
  *
- * - Objects: key-order independent, recursively compared
- * - Arrays: order sensitive, recursively compared
- * - Primitives and null: strict equality
+ * @internal
  */
 function deepEqual(a: unknown, b: unknown): boolean {
 	// Identical references or equal primitives
@@ -59,23 +57,71 @@ function deepEqual(a: unknown, b: unknown): boolean {
 /**
  * Compare two JSONC strings for semantic equality.
  *
- * Parses both strings and deep-compares the resulting values.
- * Ignores comments, whitespace, formatting, and object key ordering.
- * Array order is significant.
+ * Supports {@link https://effect.website/docs/effect/function#dual | Function.dual}
+ * for both data-first and data-last (pipeline) usage.
  *
- * Supports `Function.dual` for data-first and data-last (pipeline) usage.
+ * @param self - The first JSONC string.
+ * @param that - The second JSONC string.
  *
- * @example
+ * @returns `Effect<boolean, JsoncParseError>` — `true` when both strings parse to
+ *   semantically equivalent values, `false` otherwise. Fails with
+ *   {@link JsoncParseError} if either string is malformed.
+ *
+ * @remarks
+ * Both strings are parsed via {@link parse} and then deep-compared. The comparison
+ * ignores comments, whitespace, formatting, and object key ordering. Array order
+ * IS significant. Uses `Effect.all` internally, so the effect fails on the first
+ * parse error encountered.
+ *
+ * @see {@link equalsValue} — compare a JSONC string against an existing JS value
+ * @see {@link parse} — the underlying parser used for both strings
+ *
+ * @example Data-first comparison
  * ```ts
  * import { Effect } from "effect";
  * import { equals } from "jsonc-effect";
  *
- * // Data-first
- * Effect.runSync(equals('{"a":1}', '{ "a": 1 }')); // true
- *
- * // Pipeline
- * Effect.runSync('{"a":1}'.pipe(equals('{ "a": 1 }'))); // won't compile — use Effect pipe
+ * const result = Effect.runSync(
+ *   equals('{ "a": 1, "b": 2 }', '{"b":2,"a":1}')
+ * );
+ * // result is true
  * ```
+ *
+ * @example Key-order independence
+ * ```ts
+ * import { Effect } from "effect";
+ * import { equals } from "jsonc-effect";
+ *
+ * // Object key order does not matter
+ * const sameKeys = Effect.runSync(
+ *   equals('{"z":1,"a":2}', '{"a":2,"z":1}')
+ * );
+ * // sameKeys is true
+ *
+ * // Array order DOES matter
+ * const differentOrder = Effect.runSync(
+ *   equals('[1, 2]', '[2, 1]')
+ * );
+ * // differentOrder is false
+ * ```
+ *
+ * @example Error handling
+ * ```ts
+ * import { Effect, Either } from "effect";
+ * import type { JsoncParseError } from "jsonc-effect";
+ * import { equals } from "jsonc-effect";
+ *
+ * const result: Either.Either<boolean, JsoncParseError> = Effect.runSync(
+ *   Effect.either(equals('{ invalid }', '{}'))
+ * );
+ * // result is Either.left(JsoncParseError)
+ * ```
+ *
+ * @privateRemarks
+ * Uses a simple recursive `deepEqual` helper rather than Effect's `Equal` module
+ * because the parsed values are plain JS objects and arrays, not Effect data types.
+ *
+ * @public
  */
 export const equals: {
 	(that: string): (self: string) => Effect.Effect<boolean, JsoncParseError>;
@@ -89,19 +135,52 @@ export const equals: {
 /**
  * Compare a JSONC string against a JavaScript value for semantic equality.
  *
- * Parses the JSONC string and deep-compares against the provided value.
- * Ignores comments, whitespace, formatting, and object key ordering.
- * Array order is significant.
+ * Supports {@link https://effect.website/docs/effect/function#dual | Function.dual}
+ * for both data-first and data-last (pipeline) usage.
  *
- * Supports `Function.dual` for data-first and data-last (pipeline) usage.
+ * @param self - The JSONC string to parse.
+ * @param value - The JavaScript value to compare against.
  *
- * @example
+ * @returns `Effect<boolean, JsoncParseError>` — `true` when the parsed JSONC
+ *   is semantically equivalent to the provided value, `false` otherwise.
+ *   Fails with {@link JsoncParseError} if the string is malformed.
+ *
+ * @remarks
+ * Only the JSONC string is parsed; the JS value is used as-is. This makes
+ * `equalsValue` useful for assertions and testing where the expected value
+ * is already a JS object. The comparison semantics are the same as
+ * {@link equals}: comments, whitespace, formatting, and object key ordering
+ * are ignored, while array order IS significant.
+ *
+ * @see {@link equals} — compare two JSONC strings against each other
+ * @see {@link parse} — the underlying parser
+ *
+ * @example Basic comparison
  * ```ts
  * import { Effect } from "effect";
  * import { equalsValue } from "jsonc-effect";
  *
- * Effect.runSync(equalsValue('{"port": 3000}', { port: 3000 })); // true
+ * const result = Effect.runSync(
+ *   equalsValue('{"port": 3000, "host": "localhost"}', { host: "localhost", port: 3000 })
+ * );
+ * // result is true
  * ```
+ *
+ * @example Pipeline usage for testing
+ * ```ts
+ * import { Effect, pipe } from "effect";
+ * import { equalsValue } from "jsonc-effect";
+ *
+ * const jsonc = '{ "enabled": true, "count": 5 }';
+ * const expected = { enabled: true, count: 5 };
+ *
+ * const result = Effect.runSync(
+ *   pipe(jsonc, equalsValue(expected))
+ * );
+ * // result is true
+ * ```
+ *
+ * @public
  */
 export const equalsValue: {
 	(value: unknown): (self: string) => Effect.Effect<boolean, JsoncParseError>;

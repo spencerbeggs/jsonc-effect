@@ -15,21 +15,80 @@ import type { JsoncNode, JsoncParseOptions, JsoncSyntaxKind } from "./schemas.js
 /**
  * Parse a JSONC string into a JavaScript value.
  *
- * @param text - The JSONC string to parse
- * @param options - Optional parse options
- * @returns An Effect that produces the parsed value or fails with JsoncParseError
+ * @param text - JSONC string to parse
+ * @param options - Optional {@link JsoncParseOptions} controlling comment and
+ *   trailing-comma handling.
+ * @returns `Effect<unknown, JsoncParseError>` — succeeds with the parsed value
+ *   or fails with a {@link JsoncParseError} containing every error encountered.
+ *
+ * @remarks
+ * The return type is `unknown` (not `any`) so consumers are forced to narrow
+ * the result, which is safer in Effect pipelines. By default
+ * `allowTrailingComma` is `true`, matching common JSONC conventions used in
+ * VS Code settings and `tsconfig.json`.
+ *
+ * @see {@link parseTree} — parse into an AST instead of a plain value
+ * @see {@link JsoncParseOptions} — available parse options
+ * @see {@link JsoncParseError} — the tagged error type on the failure channel
  *
  * @example
+ * Basic parsing:
  * ```ts
  * import { Effect } from "effect";
- * import { parse } from "@spencerbeggs/jsonc-effect";
+ * import { parse } from "jsonc-effect";
  *
- * // Basic usage
  * const value = Effect.runSync(parse('{ "key": 42 }'));
- *
- * // With options
- * const strict = Effect.runSync(parse('{ "key": 42 }', { disallowComments: true }));
+ * console.log(value); // { key: 42 }
  * ```
+ *
+ * @example
+ * Parsing with options:
+ * ```ts
+ * import { Effect } from "effect";
+ * import { parse } from "jsonc-effect";
+ *
+ * const value = Effect.runSync(
+ *   parse('{ "key": 42 }', { disallowComments: true }),
+ * );
+ * ```
+ *
+ * @example
+ * Error handling with `catchTag`:
+ * ```ts
+ * import { Effect } from "effect";
+ * import { parse } from "jsonc-effect";
+ *
+ * const program = parse("{ bad }").pipe(
+ *   Effect.catchTag("JsoncParseError", (err) =>
+ *     Effect.succeed({ fallback: true, errors: err.errors }),
+ *   ),
+ * );
+ *
+ * const result = Effect.runSync(program);
+ * console.log(result);
+ * ```
+ *
+ * @example
+ * Using `Effect.gen`:
+ * ```ts
+ * import { Effect } from "effect";
+ * import { parse } from "jsonc-effect";
+ *
+ * const program = Effect.gen(function* () {
+ *   const config = yield* parse('{ "port": 3000 }');
+ *   return config;
+ * });
+ *
+ * const result = Effect.runSync(program);
+ * console.log(result); // { port: 3000 }
+ * ```
+ *
+ * @privateRemarks
+ * Uses {@link createScanner} internally with a recursive descent parser.
+ * The scanner is created with `ignoreTrivia = false` so the parser can
+ * report comment-related errors when `disallowComments` is set.
+ *
+ * @public
  */
 export const parse: {
 	(text: string): Effect.Effect<unknown, JsoncParseError>;
@@ -51,22 +110,53 @@ export const parse: {
 	);
 
 /**
- * Parse a JSONC string into an AST.
+ * Parse a JSONC string into an immutable AST.
  *
- * @param text - The JSONC string to parse
- * @param options - Optional parse options
- * @returns An Effect that produces Option.some(node) or Option.none() for empty content
+ * @param text - JSONC string to parse
+ * @param options - Optional {@link JsoncParseOptions} controlling comment and
+ *   trailing-comma handling.
+ * @returns `Effect<Option<JsoncNode>, JsoncParseError>` — succeeds with
+ *   `Option.some(root)` for non-empty documents or `Option.none()` when the
+ *   input is empty (and `allowEmptyContent` is set).
+ *
+ * @remarks
+ * The returned AST is immutable and does **not** contain parent pointers, which
+ * keeps nodes safe to share across fibers. Use the AST navigation helpers
+ * ({@link findNode}, {@link getNodeValue}) to traverse and extract values from
+ * the tree.
+ *
+ * `Option.none()` is returned only when the document contains no value tokens
+ * and `allowEmptyContent` is enabled; otherwise an empty document produces a
+ * {@link JsoncParseError}.
+ *
+ * @see {@link parse} — parse into a plain JavaScript value instead of an AST
+ * @see {@link findNode} — locate a node by JSON path segments
+ * @see {@link getNodeValue} — extract the JavaScript value from a subtree
+ * @see {@link JsoncNode} — the AST node type
  *
  * @example
+ * Parsing a JSONC string and navigating the tree:
  * ```ts
  * import { Effect, Option } from "effect";
- * import { parseTree } from "@spencerbeggs/jsonc-effect";
+ * import { parseTree } from "jsonc-effect";
  *
- * const result = Effect.runSync(parseTree('{ "a": 1 }'));
- * if (Option.isSome(result)) {
- *   console.log(result.value.type); // "object"
- * }
+ * const program = Effect.gen(function* () {
+ *   const maybeRoot = yield* parseTree('{ "a": [1, 2, 3] }');
+ *   if (Option.isSome(maybeRoot)) {
+ *     const root = maybeRoot.value;
+ *     console.log(root.type); // "object"
+ *     console.log(root.children?.length); // 1
+ *   }
+ * });
+ *
+ * Effect.runSync(program);
  * ```
+ *
+ * @privateRemarks
+ * Internally the parser builds a mutable tree using `MutableJsoncNode` and
+ * casts to the readonly `JsoncNode` on output.
+ *
+ * @public
  */
 export const parseTree: {
 	(text: string): Effect.Effect<Option.Option<JsoncNode>, JsoncParseError>;
@@ -90,18 +180,46 @@ export const parseTree: {
 /**
  * Remove all comments from JSONC text, producing valid JSON.
  *
- * @param text - The JSONC string to strip comments from
- * @param replaceCh - Optional character to replace comments with (preserves offsets)
- * @returns An Effect that produces the text with comments removed
+ * @param text - JSONC string to strip comments from
+ * @param replaceCh - Optional single character used to replace each character of
+ *   every comment. When provided, the output has the **same length** as the
+ *   input so that all offsets are preserved (line breaks inside block comments
+ *   are kept as-is).
+ * @returns `Effect<string>` — the text with all comments removed (or replaced).
+ *
+ * @remarks
+ * When `replaceCh` is omitted the comment text is simply deleted, which means
+ * character offsets in the output no longer match the original document. Pass a
+ * space (`" "`) as `replaceCh` to keep offsets stable — this is useful when you
+ * need to correlate positions between the original JSONC and the stripped JSON.
+ *
+ * @see {@link parse} — parse JSONC directly without a stripping step
  *
  * @example
+ * Basic comment stripping:
  * ```ts
  * import { Effect } from "effect";
- * import { stripComments } from "@spencerbeggs/jsonc-effect";
+ * import { stripComments } from "jsonc-effect";
  *
- * const json = Effect.runSync(stripComments('{ "a": 1 // comment\n}'));
- * // '{ "a": 1           \n}'
+ * const json = Effect.runSync(
+ *   stripComments('{ "a": 1 // comment\n}'),
+ * );
+ * console.log(json); // '{ "a": 1 \n}'
  * ```
+ *
+ * @example
+ * Using a replacement character to preserve offsets:
+ * ```ts
+ * import { Effect } from "effect";
+ * import { stripComments } from "jsonc-effect";
+ *
+ * const json = Effect.runSync(
+ *   stripComments('{ "a": 1 // comment\n}', " "),
+ * );
+ * console.log(json.length === '{ "a": 1 // comment\n}'.length); // true
+ * ```
+ *
+ * @public
  */
 export const stripComments: {
 	(text: string): Effect.Effect<string>;
