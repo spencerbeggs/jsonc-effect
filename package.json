@@ -61,7 +61,7 @@
 		"types:check": "tsgo --noEmit"
 	},
 	"dependencies": {
-		"effect": "^3.19.19"
+		"effect": "^3.20.0"
 	},
 	"devDependencies": {
 		"@savvy-web/changesets": "^0.5.1",
