@@ -1,5 +1,11 @@
 # jsonc-effect
 
+## 0.2.1
+
+### Other
+
+* [`f25261e`](https://github.com/spencerbeggs/jsonc-effect/commit/f25261e187e822f4bece453bc88d92a10b327ddd) Aligns with new test harness
+
 ## 0.2.0
 
 ### Features
