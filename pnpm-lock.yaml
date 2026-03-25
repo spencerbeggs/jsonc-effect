@@ -4,6 +4,12 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  silk:
+    effect:
+      specifier: ^3.21.0
+      version: 3.21.0
+
 overrides:
   '@isaacs/brace-expansion': ^5.0.1
   lodash: ^4.17.23
@@ -16,10 +22,6 @@ pnpmfileChecksum: sha256-OVggNoUSjNrBglprlO4g7FXDflfm7pzLSJffre8Kj8Q=
 importers:
 
   .:
-    dependencies:
-      effect:
-        specifier: ^3.19.19
-        version: 3.21.0
     devDependencies:
       '@savvy-web/changesets':
         specifier: ^0.6.0
@@ -36,6 +38,9 @@ importers:
       '@savvy-web/vitest':
         specifier: ^1.0.0
         version: 1.0.0(f6bd36e22e00e000fe24ba2dfdd2d131)
+      effect:
+        specifier: catalog:silk
+        version: 3.21.0
     publishDirectory: dist/dev
 
 packages:
