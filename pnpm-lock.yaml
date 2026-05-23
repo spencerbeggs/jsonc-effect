@@ -18,7 +18,7 @@ overrides:
   smol-toml: '>=1.6.1'
   tmp: ^0.2.4
 
-pnpmfileChecksum: sha256-qvdCCa72IufQV7GlA20Wd6Leo7yHiU/ZQZciNTWkhM4=
+pnpmfileChecksum: sha256-j7znAYbhzZYspyktgYO/HLTxIJEXL9UtQHx5IyS1XF0=
 
 importers:
 
@@ -28,14 +28,14 @@ importers:
         specifier: ^0.10.0
         version: 0.10.0(@changesets/cli@2.30.0(@types/node@25.6.0))(@effect/cluster@0.58.2(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2))(effect@3.21.2))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@3.21.2))(effect@3.21.2))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@3.21.2))(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))
       '@savvy-web/commitlint':
-        specifier: ^0.9.0
-        version: 0.9.0(@commitlint/cli@20.5.0(@types/node@25.6.0)(conventional-commits-parser@6.4.0)(typescript@5.9.3))(@commitlint/config-conventional@20.5.0)(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/typeclass@0.40.0(effect@3.21.2))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2))(commitizen@4.3.1(@types/node@25.6.0)(typescript@5.9.3))(husky@9.1.7)
+        specifier: ^0.9.1
+        version: 0.9.1(@commitlint/cli@20.5.0(@types/node@25.6.0)(conventional-commits-parser@6.4.0)(typescript@5.9.3))(@commitlint/config-conventional@20.5.0)(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/typeclass@0.40.0(effect@3.21.2))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2))(commitizen@4.3.1(@types/node@25.6.0)(typescript@5.9.3))(husky@9.1.7)
       '@savvy-web/lint-staged':
         specifier: ^1.1.0
         version: 1.1.0(067f10686ab4329f08065fb4f654de78)
       '@savvy-web/rslib-builder':
-        specifier: ^0.20.5
-        version: 0.20.5(@pnpm/logger@1001.0.1)(@rslib/core@0.21.2(@microsoft/api-extractor@7.58.7(@types/node@25.6.0))(@typescript/native-preview@7.0.0-dev.20260416.2)(core-js@3.47.0)(typescript@5.9.3))(@types/node@25.6.0)(@typescript/native-preview@7.0.0-dev.20260416.2)(core-js@3.47.0)(jiti@2.6.1)(typescript@5.9.3)
+        specifier: ^0.20.7
+        version: 0.20.7(@pnpm/logger@1001.0.1)(@rslib/core@0.21.2(@microsoft/api-extractor@7.58.7(@types/node@25.6.0))(@typescript/native-preview@7.0.0-dev.20260416.2)(core-js@3.47.0)(typescript@5.9.3))(@types/node@25.6.0)(@typescript/native-preview@7.0.0-dev.20260416.2)(core-js@3.47.0)(jiti@2.6.1)(typescript@5.9.3)
       '@savvy-web/vitest':
         specifier: ^1.3.2
         version: 1.3.2(75378b6181c54e50e7e4e78ea57ddfb8)
@@ -1098,12 +1098,12 @@ packages:
     peerDependencies:
       '@changesets/cli': ^2.31.0
 
-  '@savvy-web/commitlint@0.9.0':
-    resolution: {integrity: sha512-cv54agWrKitaxIcn98ZXFhAbosJQnnWSIGS7eVoYjOXglyjLi/4jUC94iol2MmDAPUm1eDGnBPISEkyAqxs7kA==}
+  '@savvy-web/commitlint@0.9.1':
+    resolution: {integrity: sha512-qzEO++BI9KgETT3dDQM7FPdCmpho/DqkKcfy7fD3VdirlFrhTZP87Rr9+tCbkoz8neUM14uaWsCvN/nA0czczQ==}
     hasBin: true
     peerDependencies:
-      '@commitlint/cli': ^20.5.3
-      '@commitlint/config-conventional': ^20.5.3
+      '@commitlint/cli': ^21.0.1
+      '@commitlint/config-conventional': ^21.0.1
       commitizen: ^4.3.0
       husky: ^9.1.0
 
@@ -1125,8 +1125,8 @@ packages:
       '@biomejs/biome':
         optional: true
 
-  '@savvy-web/rslib-builder@0.20.5':
-    resolution: {integrity: sha512-rR+ezNPNlDtnMV1J5AHehRS18JbMtcLFFW7fqJM7j9F37YUjmFxn+WvTyMKumB/bOE+A7tDfOEfrUmeGqOD81A==}
+  '@savvy-web/rslib-builder@0.20.7':
+    resolution: {integrity: sha512-uDkhB5/OWl1rXhw2/B0SNRrZutUVb3j+bU/bs6G1zlHvbOWx8ULMgO0uyDsClKJcp0tPhHMUMjNk+7VIHdMf2g==}
     peerDependencies:
       '@rsbuild/plugin-react': ^2.0.0
       '@rslib/core': ^0.21.0
@@ -1151,6 +1151,12 @@ packages:
 
   '@savvy-web/silk-effects@0.3.0':
     resolution: {integrity: sha512-2F7+MlexUaEN+NbLBGNTGCscJ2nww90y+rq4MwSXN4rGGE/j58oA5Tcbnm1A3koaUBpQ50jVG9aITXxqmoC2nQ==}
+    peerDependencies:
+      '@effect/platform': '>=0.96.0'
+      effect: '>=3.21.0'
+
+  '@savvy-web/silk-effects@0.4.1':
+    resolution: {integrity: sha512-WK6F4AzkH+oby4FRtGK9Kr26Ef+aSSrBK5ZQ3az5DhQYxl2QDrGNV8oWHJYftvufq078asMU9gu08/3HuiqgqQ==}
     peerDependencies:
       '@effect/platform': '>=0.96.0'
       effect: '>=3.21.0'
@@ -1263,7 +1269,6 @@ packages:
 
   '@types/parse-path@7.1.0':
     resolution: {integrity: sha512-EULJ8LApcVEPbrfND0cRQqutIOdiIgJ1Mgrhpy755r14xMohPTEpkV/k28SJvuOs9bHRFW8x+KeDAEPiGQPB9Q==}
-    deprecated: This is a stub types definition. parse-path provides its own type definitions, so you do not need this installed.
 
   '@types/ssri@7.1.5':
     resolution: {integrity: sha512-odD/56S3B51liILSk5aXJlnYt99S6Rt9EFDDqGtJM26rKHApHcwyU/UoYHrzKkdkHMAIquGWCuHtQTbes+FRQw==}
@@ -1307,12 +1312,6 @@ packages:
     peerDependencies:
       typescript: '>=4.8.4 <6.0.0'
 
-  '@typescript-eslint/tsconfig-utils@8.59.1':
-    resolution: {integrity: sha512-/0nEyPbX7gRsk0Uwfe4ALwwgxuA66d/l2mhRDNlAvaj4U3juhUtJNq0DsY8M2AYwwb9rEq2hrC3IcIcEt++iJA==}
-    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
-    peerDependencies:
-      typescript: '>=4.8.4 <6.1.0'
-
   '@typescript-eslint/tsconfig-utils@8.59.4':
     resolution: {integrity: sha512-DLCpnKgD4alVxTBSKulK+gU1KCqOgUXfDRDXh2mZgzokQKa/70ax93I2uVO3m/LLvIAtWZIFoiifudmIqAxpMA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
@@ -1321,10 +1320,6 @@ packages:
 
   '@typescript-eslint/types@8.56.1':
     resolution: {integrity: sha512-dbMkdIUkIkchgGDIv7KLUpa0Mda4IYjo4IAMJUZ+3xNoUXxMsk9YtKpTHSChRS85o+H9ftm51gsK1dZReY9CVw==}
-    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
-
-  '@typescript-eslint/types@8.59.1':
-    resolution: {integrity: sha512-ZDCjgccSdYPw5Bxh+my4Z0lJU96ZDN7jbBzvmEn0FZx3RtU1C7VWl6NbDx94bwY3V5YsgwRzJPOgeY2Q/nLG8A==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
   '@typescript-eslint/types@8.59.4':
@@ -3971,6 +3966,12 @@ packages:
       '@effect/platform': '>=0.96.0'
       effect: '>=3.21.0'
 
+  workspaces-effect@1.1.0:
+    resolution: {integrity: sha512-vo+6mcz+kFDgS+OdZxIXqxKT/6mKhAaUvfcRA9CY2pPa4/3cm7xqrYp/ar/+b/6aikyw4Qum8zS/gSgwk5kUPQ==}
+    peerDependencies:
+      '@effect/platform': '>=0.96.0'
+      effect: '>=3.21.0'
+
   wrap-ansi@7.0.0:
     resolution: {integrity: sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q==}
     engines: {node: '>=10'}
@@ -4067,9 +4068,6 @@ packages:
     resolution: {integrity: sha512-O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA==}
     peerDependencies:
       zod: ^3.25.28 || ^4
-
-  zod@4.3.6:
-    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
 
   zod@4.4.3:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
@@ -4658,7 +4656,7 @@ snapshots:
 
   '@microsoft/tsdoc@0.16.0': {}
 
-  '@modelcontextprotocol/sdk@1.29.0(zod@4.3.6)':
+  '@modelcontextprotocol/sdk@1.29.0(zod@4.4.3)':
     dependencies:
       '@hono/node-server': 1.19.14(hono@4.12.14)
       ajv: 8.18.0
@@ -4675,8 +4673,8 @@ snapshots:
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
-      zod: 4.3.6
-      zod-to-json-schema: 3.25.2(zod@4.3.6)
+      zod: 4.4.3
+      zod-to-json-schema: 3.25.2(zod@4.4.3)
     transitivePeerDependencies:
       - supports-color
 
@@ -5254,7 +5252,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@savvy-web/commitlint@0.9.0(@commitlint/cli@20.5.0(@types/node@25.6.0)(conventional-commits-parser@6.4.0)(typescript@5.9.3))(@commitlint/config-conventional@20.5.0)(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/typeclass@0.40.0(effect@3.21.2))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2))(commitizen@4.3.1(@types/node@25.6.0)(typescript@5.9.3))(husky@9.1.7)':
+  '@savvy-web/commitlint@0.9.1(@commitlint/cli@20.5.0(@types/node@25.6.0)(conventional-commits-parser@6.4.0)(typescript@5.9.3))(@commitlint/config-conventional@20.5.0)(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/typeclass@0.40.0(effect@3.21.2))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2))(commitizen@4.3.1(@types/node@25.6.0)(typescript@5.9.3))(husky@9.1.7)':
     dependencies:
       '@commitlint/cli': 20.5.0(@types/node@25.6.0)(conventional-commits-parser@6.4.0)(typescript@5.9.3)
       '@commitlint/config-conventional': 20.5.0
@@ -5266,7 +5264,7 @@ snapshots:
       '@effect/printer-ansi': 0.49.0(@effect/typeclass@0.40.0(effect@3.21.2))(effect@3.21.2)
       '@effect/rpc': 0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2)
       '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2)
-      '@savvy-web/silk-effects': 0.3.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2)
+      '@savvy-web/silk-effects': 0.4.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2)
       commitizen: 4.3.1(@types/node@25.6.0)(typescript@5.9.3)
       effect: 3.21.2
       husky: 9.1.7
@@ -5310,7 +5308,7 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@savvy-web/rslib-builder@0.20.5(@pnpm/logger@1001.0.1)(@rslib/core@0.21.2(@microsoft/api-extractor@7.58.7(@types/node@25.6.0))(@typescript/native-preview@7.0.0-dev.20260416.2)(core-js@3.47.0)(typescript@5.9.3))(@types/node@25.6.0)(@typescript/native-preview@7.0.0-dev.20260416.2)(core-js@3.47.0)(jiti@2.6.1)(typescript@5.9.3)':
+  '@savvy-web/rslib-builder@0.20.7(@pnpm/logger@1001.0.1)(@rslib/core@0.21.2(@microsoft/api-extractor@7.58.7(@types/node@25.6.0))(@typescript/native-preview@7.0.0-dev.20260416.2)(core-js@3.47.0)(typescript@5.9.3))(@types/node@25.6.0)(@typescript/native-preview@7.0.0-dev.20260416.2)(core-js@3.47.0)(jiti@2.6.1)(typescript@5.9.3)':
     dependencies:
       '@microsoft/api-extractor': 7.58.7(@types/node@25.6.0)
       '@microsoft/tsdoc': 0.16.0
@@ -5349,6 +5347,15 @@ snapshots:
       semver-effect: 0.2.1(effect@3.21.2)
       workspaces-effect: 0.4.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2)
       yaml-effect: 0.2.3(effect@3.21.2)
+
+  '@savvy-web/silk-effects@0.4.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2)':
+    dependencies:
+      '@effect/platform': 0.96.1(effect@3.21.2)
+      effect: 3.21.2
+      jsonc-effect: 0.2.1(effect@3.21.2)
+      semver-effect: 0.2.1(effect@3.21.2)
+      workspaces-effect: 1.1.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2)
+      yaml-effect: 0.6.0(effect@3.21.2)
 
   '@savvy-web/vitest@1.3.2(75378b6181c54e50e7e4e78ea57ddfb8)':
     dependencies:
@@ -5462,8 +5469,8 @@ snapshots:
 
   '@typescript-eslint/project-service@8.56.1(typescript@5.9.3)':
     dependencies:
-      '@typescript-eslint/tsconfig-utils': 8.59.1(typescript@5.9.3)
-      '@typescript-eslint/types': 8.59.1
+      '@typescript-eslint/tsconfig-utils': 8.59.4(typescript@5.9.3)
+      '@typescript-eslint/types': 8.59.4
       debug: 4.4.3
       typescript: 5.9.3
     transitivePeerDependencies:
@@ -5492,17 +5499,11 @@ snapshots:
     dependencies:
       typescript: 5.9.3
 
-  '@typescript-eslint/tsconfig-utils@8.59.1(typescript@5.9.3)':
-    dependencies:
-      typescript: 5.9.3
-
   '@typescript-eslint/tsconfig-utils@8.59.4(typescript@5.9.3)':
     dependencies:
       typescript: 5.9.3
 
   '@typescript-eslint/types@8.56.1': {}
-
-  '@typescript-eslint/types@8.59.1': {}
 
   '@typescript-eslint/types@8.59.4': {}
 
@@ -6945,7 +6946,7 @@ snapshots:
       picomatch: 4.0.4
       string-argv: 0.3.2
       tinyexec: 1.1.1
-      yaml: 2.8.3
+      yaml: 2.9.0
 
   listr2@9.0.5:
     dependencies:
@@ -8268,12 +8269,12 @@ snapshots:
       '@effect/platform-node': 0.106.0(@effect/cluster@0.58.2(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2)
       '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2)
       '@effect/sql-sqlite-node': 0.52.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2)
-      '@modelcontextprotocol/sdk': 1.29.0(zod@4.3.6)
+      '@modelcontextprotocol/sdk': 1.29.0(zod@4.4.3)
       '@trpc/server': 11.16.0(typescript@5.9.3)
       effect: 3.21.2
       std-env: 4.1.0
       vitest: 4.1.4(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(vite@8.0.8(@types/node@25.6.0)(jiti@2.6.1)(yaml@2.9.0))
-      zod: 4.3.6
+      zod: 4.4.3
     optionalDependencies:
       '@vitest/coverage-v8': 4.1.4(vitest@4.1.4)
     transitivePeerDependencies:
@@ -8403,6 +8404,15 @@ snapshots:
       semver-effect: 0.2.1(effect@3.21.2)
       yaml-effect: 0.6.0(effect@3.21.2)
 
+  workspaces-effect@1.1.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2):
+    dependencies:
+      '@effect/platform': 0.96.1(effect@3.21.2)
+      effect: 3.21.2
+      jsonc-effect: 0.2.1(effect@3.21.2)
+      minimatch: 10.2.5
+      semver-effect: 0.2.1(effect@3.21.2)
+      yaml-effect: 0.6.0(effect@3.21.2)
+
   wrap-ansi@7.0.0:
     dependencies:
       ansi-styles: 4.3.0
@@ -8486,11 +8496,9 @@ snapshots:
 
   yoctocolors@2.1.2: {}
 
-  zod-to-json-schema@3.25.2(zod@4.3.6):
+  zod-to-json-schema@3.25.2(zod@4.4.3):
     dependencies:
-      zod: 4.3.6
-
-  zod@4.3.6: {}
+      zod: 4.4.3
 
   zod@4.4.3: {}
 
