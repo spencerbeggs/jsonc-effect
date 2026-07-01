@@ -41,7 +41,7 @@ export const JsoncSyntaxKind = Schema.Literal(
 /**
  * The union of all JSONC token kind string literals.
  *
- * @see {@link JsoncSyntaxKind}
+ * @see {@link (JsoncSyntaxKind:variable)}
  *
  * @public
  */
@@ -71,7 +71,7 @@ export const JsoncScanError = Schema.Literal(
 /**
  * The union of all JSONC scan error string literals.
  *
- * @see {@link JsoncScanError}
+ * @see {@link (JsoncScanError:variable)}
  *
  * @public
  */
@@ -82,13 +82,13 @@ export type JsoncScanError = Schema.Schema.Type<typeof JsoncScanError>;
  * value, position within the source, and any scan error.
  *
  * @remarks
- * - `kind` — the {@link JsoncSyntaxKind} discriminator for this token.
+ * - `kind` — the {@link (JsoncSyntaxKind:type)} discriminator for this token.
  * - `value` — the raw text slice from the source document.
  * - `offset` — zero-based character offset from the start of the document.
  * - `length` — character length of this token in the source.
  * - `startLine` — zero-based line number where the token begins.
  * - `startCharacter` — zero-based column within `startLine`.
- * - `error` — a {@link JsoncScanError} code; `"None"` when the token is valid.
+ * - `error` — a {@link (JsoncScanError:type)} code; `"None"` when the token is valid.
  *
  * @see {@link createScanner} — produces a stream of `JsoncToken` instances
  *
@@ -145,7 +145,7 @@ export const JsoncNodeType = Schema.Literal("object", "array", "property", "stri
 /**
  * The union of all JSONC AST node type string literals.
  *
- * @see {@link JsoncNodeType}
+ * @see {@link (JsoncNodeType:variable)}
  *
  * @public
  */
@@ -161,7 +161,7 @@ export type JsoncNodeType = Schema.Schema.Type<typeof JsoncNodeType>;
  * pipelines. Child relationships are expressed via the `children` array,
  * and the recursive type is handled with `Schema.suspend`.
  *
- * - `type` — the {@link JsoncNodeType} discriminator.
+ * - `type` — the {@link (JsoncNodeType:type)} discriminator.
  * - `value` — the decoded JavaScript value for leaf nodes (`string`,
  *   `number`, `boolean`, `null`); `undefined` for structural nodes.
  * - `offset` — zero-based character offset of this node in the source.
@@ -207,7 +207,7 @@ export class JsoncNode extends Schema.Class<JsoncNode>("JsoncNode")({
 }) {}
 
 /**
- * A single segment of a {@link JsoncPath}: a `string` for object property
+ * A single segment of a {@link (JsoncPath:type)}: a `string` for object property
  * keys or a `number` for array indices.
  *
  * @see {@link findNode} — resolves a path to an AST node
@@ -227,14 +227,14 @@ export const JsoncSegment = Schema.Union(Schema.String, Schema.Number);
 /**
  * A single path segment type — `string | number`.
  *
- * @see {@link JsoncSegment}
+ * @see {@link (JsoncSegment:variable)}
  *
  * @public
  */
 export type JsoncSegment = Schema.Schema.Type<typeof JsoncSegment>;
 
 /**
- * An ordered sequence of {@link JsoncSegment} values describing a location
+ * An ordered sequence of {@link (JsoncSegment:type)} values describing a location
  * within a JSONC document tree.
  *
  * @see {@link findNode} — resolves a `JsoncPath` to an AST node
@@ -257,7 +257,7 @@ export const JsoncPath = Schema.Array(JsoncSegment);
 /**
  * An array of path segments — `ReadonlyArray<string | number>`.
  *
- * @see {@link JsoncPath}
+ * @see {@link (JsoncPath:variable)}
  *
  * @public
  */

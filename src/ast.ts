@@ -29,7 +29,7 @@ import type { JsoncNode, JsoncPath } from "./schemas.js";
  * @see {@link parseTree} — produces the AST root this function operates on
  * @see {@link getNodeValue} — reconstructs a JS value from a found node
  * @see {@link JsoncNode} — the AST node type
- * @see {@link JsoncPath} — the path segment array type
+ * @see {@link (JsoncPath:type)} — the path segment array type
  *
  * @example Data-first usage
  * ```ts
@@ -138,7 +138,7 @@ export const findNodeAtOffset: {
  * and given a path you get the node.
  *
  * @see {@link findNodeAtOffset} — returns the node itself rather than its path
- * @see {@link JsoncPath} — the path segment array type
+ * @see {@link (JsoncPath:type)} — the path segment array type
  *
  * @example Getting the path at an offset
  * ```ts
