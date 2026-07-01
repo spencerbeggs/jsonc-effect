@@ -159,7 +159,7 @@ export const formatAndApply = (
  * that supports both data-first and data-last (pipeline) usage.
  *
  * @param text - The JSONC source text to modify.
- * @param path - A {@link JsoncPath} (array of string keys and numeric indices)
+ * @param path - A {@link (JsoncPath:type)} (array of string keys and numeric indices)
  *   identifying the target location in the JSON structure.
  * @param value - The value to set. Pass `undefined` to remove the
  *   property or array element at the given path.

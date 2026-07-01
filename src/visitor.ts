@@ -31,7 +31,7 @@ import type { JsoncParseOptions, JsoncSyntaxKind } from "./schemas.js";
  *   includes `value` and `path`.
  * - **Separator** — a `,` or `:` character.
  * - **Comment** — a line or block comment.
- * - **Error** — a parse error, includes a {@link JsoncParseErrorCode} `code`.
+ * - **Error** — a parse error, includes a {@link (JsoncParseErrorCode:type)} `code`.
  *
  * Use the `_tag` field to discriminate between variants in `switch`
  * statements or {@link https://effect.website/docs/stream/operations | Stream}

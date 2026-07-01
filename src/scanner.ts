@@ -22,7 +22,7 @@ import type { JsoncScanError, JsoncSyntaxKind } from "./schemas.js";
  * `scan()` advances an internal cursor and updates all token-related state.
  *
  * @see {@link createScanner} — factory function that produces a `JsoncScanner`
- * @see {@link JsoncSyntaxKind} — string literal union of all token types
+ * @see {@link (JsoncSyntaxKind:type)} — string literal union of all token types
  *
  * @example
  * Collecting all structural tokens from a JSONC string:
@@ -48,9 +48,9 @@ import type { JsoncScanError, JsoncSyntaxKind } from "./schemas.js";
  * @public
  */
 export interface JsoncScanner {
-	/** Advance the cursor to the next token and return its {@link JsoncSyntaxKind}. */
+	/** Advance the cursor to the next token and return its {@link (JsoncSyntaxKind:type)}. */
 	scan(): JsoncSyntaxKind;
-	/** Return the {@link JsoncSyntaxKind} of the current token without advancing. */
+	/** Return the {@link (JsoncSyntaxKind:type)} of the current token without advancing. */
 	getToken(): JsoncSyntaxKind;
 	/** Return the string value of the current token (e.g. the unescaped content of a string literal). */
 	getTokenValue(): string;
@@ -62,7 +62,7 @@ export interface JsoncScanner {
 	getTokenStartLine(): number;
 	/** Return the zero-based character position within the line where the current token starts. */
 	getTokenStartCharacter(): number;
-	/** Return the {@link JsoncScanError} for the current token, or `"None"` if no error. */
+	/** Return the {@link (JsoncScanError:type)} for the current token, or `"None"` if no error. */
 	getTokenError(): JsoncScanError;
 	/** Return the current cursor position (byte offset into the source text). */
 	getPosition(): number;

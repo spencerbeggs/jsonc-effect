@@ -41,7 +41,7 @@ export const JsoncParseErrorCode = Schema.Literal(
 /**
  * The union of all JSONC parse error code string literals.
  *
- * @see {@link JsoncParseErrorCode}
+ * @see {@link (JsoncParseErrorCode:variable)}
  *
  * @public
  */
@@ -52,7 +52,7 @@ export type JsoncParseErrorCode = Schema.Schema.Type<typeof JsoncParseErrorCode>
  * message, and the exact position within the source document.
  *
  * @remarks
- * - `code` — a {@link JsoncParseErrorCode} identifying the error kind.
+ * - `code` — a {@link (JsoncParseErrorCode:type)} identifying the error kind.
  * - `message` — a descriptive message suitable for display.
  * - `offset` — zero-based character offset where the error occurred.
  * - `length` — character length of the problematic span.
@@ -90,17 +90,20 @@ export class JsoncParseErrorDetail extends Schema.Class<JsoncParseErrorDetail>("
 }) {}
 
 /**
- * Base class for {@link JsoncParseError}.
+ * Base class for {@link JsoncParseError}; not intended to be constructed or
+ * caught directly — use `JsoncParseError` instead.
  *
  * @privateRemarks
  * The `*Base` pattern is required because `Data.TaggedError` produces complex
  * type signatures involving intersection types and branded generics that
- * api-extractor cannot roll up into a single `.d.ts` bundle. By exporting
- * the base separately as `@internal`, the public `JsoncParseError` class
- * extends it with concrete fields, giving api-extractor a simple class
- * declaration to work with.
+ * api-extractor cannot roll up into a single `.d.ts` bundle. Exporting the
+ * base separately lets the public `JsoncParseError` class extend it with
+ * concrete fields, giving api-extractor a simple class declaration to work
+ * with. It is tagged `@public` (rather than `@internal`) because it appears
+ * in `JsoncParseError`'s heritage clause in the public `.d.ts`, and API
+ * Extractor requires release tags to be compatible across a signature.
  *
- * @internal
+ * @public
  */
 export const JsoncParseErrorBase = Data.TaggedError("JsoncParseError");
 
@@ -159,14 +162,16 @@ export class JsoncParseError extends JsoncParseErrorBase<{
 }
 
 /**
- * Base class for {@link JsoncNodeNotFoundError}.
+ * Base class for {@link JsoncNodeNotFoundError}; not intended to be
+ * constructed or caught directly — use `JsoncNodeNotFoundError` instead.
  *
  * @privateRemarks
  * Uses the same `*Base` pattern as {@link JsoncParseErrorBase} to work
  * around api-extractor's inability to roll up the complex type produced
- * by `Data.TaggedError` into a single `.d.ts` declaration.
+ * by `Data.TaggedError` into a single `.d.ts` declaration. Tagged `@public`
+ * for the same heritage-clause-compatibility reason as `JsoncParseErrorBase`.
  *
- * @internal
+ * @public
  */
 export const JsoncNodeNotFoundErrorBase = Data.TaggedError("JsoncNodeNotFoundError");
 
@@ -205,14 +210,16 @@ export class JsoncNodeNotFoundError extends JsoncNodeNotFoundErrorBase<{
 }
 
 /**
- * Base class for {@link JsoncModificationError}.
+ * Base class for {@link JsoncModificationError}; not intended to be
+ * constructed or caught directly — use `JsoncModificationError` instead.
  *
  * @privateRemarks
  * Uses the same `*Base` pattern as {@link JsoncParseErrorBase} to work
  * around api-extractor's inability to roll up the complex type produced
- * by `Data.TaggedError` into a single `.d.ts` declaration.
+ * by `Data.TaggedError` into a single `.d.ts` declaration. Tagged `@public`
+ * for the same heritage-clause-compatibility reason as `JsoncParseErrorBase`.
  *
- * @internal
+ * @public
  */
 export const JsoncModificationErrorBase = Data.TaggedError("JsoncModificationError");
 
