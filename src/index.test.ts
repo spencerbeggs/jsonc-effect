@@ -381,6 +381,74 @@ describe("parseTree", () => {
 });
 
 // ============================================================
+// parseTree — tight node spans (issue #62)
+// ============================================================
+
+describe("parseTree — tight node spans (issue #62)", () => {
+	it("string value node span excludes trailing whitespace before closing brace with newline", async () => {
+		const input = '{\n\t"version": "1.0.0"\n}\n';
+		const result = await Effect.runPromise(parseTree(input));
+		expect(Option.isSome(result)).toBe(true);
+		if (Option.isSome(result)) {
+			const root = result.value;
+			const children = root.children ?? [];
+			const property = children[0];
+			const propChildren = property.children ?? [];
+			const valueNode = propChildren[1];
+			expect(input.slice(valueNode.offset, valueNode.offset + valueNode.length)).toBe('"1.0.0"');
+		}
+	});
+
+	it("property node span ends at its value's tight end, excluding trailing whitespace", async () => {
+		const input = '{\n\t"version": "1.0.0"\n}\n';
+		const result = await Effect.runPromise(parseTree(input));
+		expect(Option.isSome(result)).toBe(true);
+		if (Option.isSome(result)) {
+			const root = result.value;
+			const property = (root.children ?? [])[0];
+			expect(input.slice(property.offset, property.offset + property.length)).toBe('"version": "1.0.0"');
+		}
+	});
+
+	it("array node span excludes trailing whitespace before closing bracket with a space", async () => {
+		const input = "[1, 2 ]";
+		const result = await Effect.runPromise(parseTree(input));
+		expect(Option.isSome(result)).toBe(true);
+		if (Option.isSome(result)) {
+			const root = result.value;
+			expect(input.slice(root.offset, root.offset + root.length)).toBe("[1, 2 ]");
+			const lastElement = (root.children ?? [])[1];
+			expect(input.slice(lastElement.offset, lastElement.offset + lastElement.length)).toBe("2");
+		}
+	});
+
+	it("nested object node span excludes trailing whitespace before array's closing bracket", async () => {
+		const input = '[ { "a": 1 } ]';
+		const result = await Effect.runPromise(parseTree(input));
+		expect(Option.isSome(result)).toBe(true);
+		if (Option.isSome(result)) {
+			const root = result.value;
+			const nestedObject = (root.children ?? [])[0];
+			expect(nestedObject.type).toBe("object");
+			expect(input.slice(nestedObject.offset, nestedObject.offset + nestedObject.length)).toBe('{ "a": 1 }');
+		}
+	});
+
+	it("value node span excludes trailing line comments that follow it", async () => {
+		const input = '{ "a": 1 // trailing comment\n}';
+		const result = await Effect.runPromise(parseTree(input));
+		expect(Option.isSome(result)).toBe(true);
+		if (Option.isSome(result)) {
+			const root = result.value;
+			const property = (root.children ?? [])[0];
+			const valueNode = (property.children ?? [])[1];
+			expect(input.slice(valueNode.offset, valueNode.offset + valueNode.length)).toBe("1");
+			expect(input.slice(property.offset, property.offset + property.length)).toBe('"a": 1');
+		}
+	});
+});
+
+// ============================================================
 // stripComments Tests
 // ============================================================
 
@@ -1155,6 +1223,38 @@ describe("modify — data-last (pipe)", () => {
 		);
 		const parsed = JSON.parse(result);
 		expect(parsed.x).toBe(2);
+	});
+});
+
+// ============================================================
+// modify — byte-minimal edits (issue #62)
+// ============================================================
+
+describe("modify — byte-minimal edits (issue #62)", () => {
+	it("replaces an object property value byte-for-byte, preserving the newline before the closing brace", async () => {
+		const input = '{\n\t"version": "1.0.0"\n}\n';
+		const result = await Effect.runPromise(
+			modify(input, ["version"], "2.0.0").pipe(Effect.flatMap((edits) => applyEdits(input, edits))),
+		);
+		expect(result).toBe('{\n\t"version": "2.0.0"\n}\n');
+	});
+
+	it("replaces an array element value byte-for-byte, preserving the whitespace before the closing bracket", async () => {
+		const input = '{\n\t"items": [\n\t\t1,\n\t\t2\n\t]\n}\n';
+		const result = await Effect.runPromise(
+			modify(input, ["items", 1], 99).pipe(Effect.flatMap((edits) => applyEdits(input, edits))),
+		);
+		expect(result).toBe('{\n\t"items": [\n\t\t1,\n\t\t99\n\t]\n}\n');
+	});
+
+	it("inserts a new property directly after the last value, preserving the newline-before-brace layout", async () => {
+		const input = '{\n\t"pkg": "a"\n}\n';
+		const result = await Effect.runPromise(
+			modify(input, ["version"], "1.0.0", { formattingOptions: { insertSpaces: false } }).pipe(
+				Effect.flatMap((edits) => applyEdits(input, edits)),
+			),
+		);
+		expect(result).toBe('{\n\t"pkg": "a",\n\t"version": "1.0.0"\n}\n');
 	});
 });
 

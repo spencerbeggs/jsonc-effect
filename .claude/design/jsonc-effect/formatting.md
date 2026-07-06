@@ -3,12 +3,13 @@ status: current
 module: jsonc-effect
 category: architecture
 created: 2026-03-12
-updated: 2026-03-13
-last-synced: 2026-03-13
+updated: 2026-07-06
+last-synced: 2026-07-06
 completeness: 95
 related:
   - architecture.md
   - scanner.md
+  - parser.md
   - effect-patterns.md
 dependencies:
   - scanner.md
@@ -16,8 +17,7 @@ dependencies:
 
 # Formatting and Modification
 
-Compute edit operations for JSONC documents without mutation -- format, modify, and apply edits
-as a pure data pipeline.
+Compute edit operations for JSONC documents without mutation -- format, modify, and apply edits as a pure data pipeline.
 
 ## Table of Contents
 
@@ -30,9 +30,7 @@ as a pure data pipeline.
 
 ## Overview
 
-The formatting module (`format.ts`) provides functions for formatting JSONC documents and computing
-document modifications. All operations produce arrays of `JsoncEdit` objects rather than mutating
-text directly, fitting naturally into Effect's functional style.
+The formatting module (`format.ts`) provides functions for formatting JSONC documents and computing document modifications. All operations produce arrays of `JsoncEdit` objects rather than mutating text directly, fitting naturally into Effect's functional style.
 
 **When to reference this document:**
 
@@ -58,8 +56,7 @@ text directly, fitting naturally into Effect's functional style.
 
 **Format:**
 
-- Uses `createScanner(text, false)` to walk all tokens, computing indentation edits by comparing
-  gap text between tokens against expected whitespace
+- Uses `createScanner(text, false)` to walk all tokens, computing indentation edits by comparing gap text between tokens against expected whitespace
 - Supports range formatting (format only a portion of the document)
 - `keepLines` mode preserves existing line breaks
 - Configurable `tabSize`, `insertSpaces`, `eol`, and `insertFinalNewline`
@@ -68,6 +65,8 @@ text directly, fitting naturally into Effect's functional style.
 
 - Uses `createScanner(text, true)` (ignoreTrivia=true) to navigate to the target path
 - Computes replacement, insertion, or removal edits based on the target value
+- Edits are **byte-minimal**: replacement spans end at the last token of the target value, never absorbing trailing whitespace or comments (issue #62). The internal `skipValue()` returns the tight end offset of the skipped value; using the next token's offset instead would overshoot because the ignoreTrivia scanner silently skips whitespace when advancing
+- Insertion of a new property appends `,\n<indent>"key": ...` directly after the last existing value, preserving the newline-before-closing-brace layout
 - Supports `Function.dual` with arity detection via `typeof args[0] === "string" && Array.isArray(args[1])`
 - Returns `Effect<JsoncEdit[], JsoncModificationError>` when the path cannot be navigated
 
@@ -121,11 +120,13 @@ Producing `JsoncEdit[]` rather than mutated strings enables:
 - Applying edits in the correct order (reverse offset)
 - Natural fit with Effect's functional programming model
 
+### Byte-Minimal Edits
+
+Modification edits touch only the bytes of the value being replaced. Earlier behavior computed the replacement span from the next scanned token's offset, which swallowed the whitespace between the last value and a closing `}` or `]` -- editing `"version"` in a pretty-printed file collapsed the trailing newline (issue #62). Byte-minimal spans keep in-place edits diff-friendly and preserve the surrounding layout exactly. This mirrors the tight node span contract in the [parser](parser.md).
+
 ### Separate Scanner Modes
 
-Format uses `ignoreTrivia=false` to analyze whitespace gaps between tokens. Modify uses
-`ignoreTrivia=true` for simplified path navigation. This separation keeps each function focused
-on its specific concern.
+Format uses `ignoreTrivia=false` to analyze whitespace gaps between tokens. Modify uses `ignoreTrivia=true` for simplified path navigation. This separation keeps each function focused on its specific concern.
 
 ---
 
@@ -133,4 +134,5 @@ on its specific concern.
 
 - [Architecture](architecture.md) -- System overview and format pipeline diagram
 - [Scanner](scanner.md) -- Token stream used for edit computation
+- [Parser](parser.md) -- Tight node span semantics that modify's edits mirror
 - [Effect Patterns](effect-patterns.md) -- Function.dual pattern details

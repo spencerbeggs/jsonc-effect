@@ -51,6 +51,22 @@ const result = Effect.runSync(
 // => '{ "version": 2, "name": "app" }'
 ```
 
+Edits are byte-minimal: replacing a value touches exactly the value's span, so comments, indentation and the layout around closing braces survive the round trip.
+
+```typescript
+import { modify, applyEdits } from "jsonc-effect"
+import { Effect } from "effect"
+
+const input = '{\n\t"version": "1.0.0"\n}\n'
+
+const result = Effect.runSync(
+  modify(input, ["version"], "2.0.0").pipe(
+    Effect.flatMap((edits) => applyEdits(input, edits))
+  )
+)
+// => '{\n\t"version": "2.0.0"\n}\n'
+```
+
 ## Streaming visitor events
 
 ```typescript
@@ -235,7 +251,7 @@ const updated = Effect.runSync(
 )
 ```
 
-## Wrapping in an Effect Service
+## Wrapping in an Effect service
 
 ```typescript
 import { Context, Effect, Layer } from "effect"

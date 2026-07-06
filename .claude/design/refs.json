@@ -1,0 +1,65 @@
+{
+	"version": 1,
+	"refs": [
+		{
+			"source": "CLAUDE.md",
+			"target": ".claude/design/jsonc-effect/architecture.md",
+			"hash": "afc1dec073cdf2588aba182716153eff9e5d96a942f8ece8689f47187b459ae3",
+			"recordedAt": "2026-07-06"
+		},
+		{
+			"source": "CLAUDE.md",
+			"target": ".claude/design/jsonc-effect/ast-navigation.md",
+			"hash": "1e763e0f4f7ed2393eccd7f7e898d31876e4d754b7284f7352d4ea83045388f6",
+			"recordedAt": "2026-07-06"
+		},
+		{
+			"source": "CLAUDE.md",
+			"target": ".claude/design/jsonc-effect/effect-patterns.md",
+			"hash": "99bf8f2819c5155b2e5123a192be05640aaf322467e24ca312288ae93fc41ae6",
+			"recordedAt": "2026-07-06"
+		},
+		{
+			"source": "CLAUDE.md",
+			"target": ".claude/design/jsonc-effect/equality.md",
+			"hash": "b6995821b24af71859bb7b2a6ff68c9e6b6a414687e0d252015f4a81a7955f73",
+			"recordedAt": "2026-07-06"
+		},
+		{
+			"source": "CLAUDE.md",
+			"target": ".claude/design/jsonc-effect/error-types.md",
+			"hash": "188dab2bc3a95ae3a70836d5c58dd79c96ac86787498f1eb222f03f5870c6cf4",
+			"recordedAt": "2026-07-06"
+		},
+		{
+			"source": "CLAUDE.md",
+			"target": ".claude/design/jsonc-effect/formatting.md",
+			"hash": "194824d0ed3e3a64f4b14beaf42cfef1efc43943b28f7f8df4ff99f4bfc68745",
+			"recordedAt": "2026-07-06"
+		},
+		{
+			"source": "CLAUDE.md",
+			"target": ".claude/design/jsonc-effect/parser.md",
+			"hash": "81c6e854bb43f74a61af092e39057200e849fbd261e6de4cfb7be773f69ac8d2",
+			"recordedAt": "2026-07-06"
+		},
+		{
+			"source": "CLAUDE.md",
+			"target": ".claude/design/jsonc-effect/scanner.md",
+			"hash": "8626e574c50c868757b985a2e2b6fa051435832135bc0e1ef419ad5dc1140787",
+			"recordedAt": "2026-07-06"
+		},
+		{
+			"source": "CLAUDE.md",
+			"target": ".claude/design/jsonc-effect/schema-integration.md",
+			"hash": "4866487f6c34e6842595243c4179208acc187d4428af3634cbf62de74120b9aa",
+			"recordedAt": "2026-07-06"
+		},
+		{
+			"source": "CLAUDE.md",
+			"target": ".claude/design/jsonc-effect/visitor.md",
+			"hash": "973a5eb48a40bb32cc52321f62252aadef139b40b087e4578b2d7c9777ba28ba",
+			"recordedAt": "2026-07-06"
+		}
+	]
+}

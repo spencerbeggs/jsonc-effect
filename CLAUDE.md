@@ -31,6 +31,7 @@ Load when working on system architecture, module structure, or major refactoring
 -> `@./.claude/design/jsonc-effect/ast-navigation.md` — AST traversal utilities
 -> `@./.claude/design/jsonc-effect/visitor.md` — SAX-style event stream
 -> `@./.claude/design/jsonc-effect/formatting.md` — Format/modify/applyEdits
+-> `@./.claude/design/jsonc-effect/equality.md` — Semantic equality (equals/equalsValue)
 -> `@./.claude/design/jsonc-effect/error-types.md` — TaggedError patterns
 -> `@./.claude/design/jsonc-effect/effect-patterns.md` — Effect-TS patterns used
 Load specific component docs when modifying that component's implementation.
@@ -42,6 +43,7 @@ Load specific component docs when modifying that component's implementation.
 - `Schema.Class` for structural equality on tokens, nodes, options
 - String literals for token types (not numeric enums)
 - `allowTrailingComma` defaults to `true`
+- Tight node spans — `JsoncNode` offset/length end at the node's last token (trailing whitespace/comments excluded), so `modify` emits byte-minimal edits and offset lookups in trivia resolve to the container
 - Platform independent — no `node:` imports anywhere
 
 ### Source Structure
@@ -56,6 +58,7 @@ src/
 ├── ast.ts                 # findNode, findNodeAtOffset, getNodePath, getNodeValue
 ├── visitor.ts             # visit(), visitCollect(), JsoncVisitorEvent stream API
 ├── format.ts              # format(), modify(), applyEdits(), formatAndApply()
+├── equality.ts            # equals(), equalsValue() — semantic comparison
 └── index.ts               # Barrel exports
 ```
 
