@@ -3,8 +3,8 @@ status: current
 module: jsonc-effect
 category: architecture
 created: 2026-03-12
-updated: 2026-03-13
-last-synced: 2026-03-13
+updated: 2026-07-06
+last-synced: 2026-07-06
 completeness: 95
 related:
   - scanner.md
@@ -21,8 +21,7 @@ dependencies: []
 
 # jsonc-effect - Architecture Overview
 
-Pure Effect-TS implementation of a JSONC (JSON with Comments) parser with no external parser
-dependencies.
+Pure Effect-TS implementation of a JSONC (JSON with Comments) parser with no external parser dependencies.
 
 ## Table of Contents
 
@@ -39,14 +38,9 @@ dependencies.
 
 ## Overview
 
-jsonc-effect is a pure Effect-TS implementation of a JSONC (JSON with Comments) parser. The scanner,
-parser, AST construction, and formatting are all implemented natively -- the only runtime dependency
-is `effect`. Microsoft's jsonc-parser (MIT) serves as the design reference for token types, AST
-structure, and parser behavior, but it is not a dependency.
+jsonc-effect is a pure Effect-TS implementation of a JSONC (JSON with Comments) parser. The scanner, parser, AST construction and formatting are all implemented natively -- the only runtime dependency is `effect`. Microsoft's jsonc-parser (MIT) serves as the design reference for token types, AST structure and parser behavior, but it is not a dependency.
 
-The package provides three primary APIs: `parse` (JSONC string to JavaScript value), `parseTree`
-(JSONC string to AST), and `stripComments` (remove comments to produce valid JSON). All APIs return
-Effect values, enabling typed error handling and composition with other Effect-based code.
+The package provides three primary APIs: `parse` (JSONC string to JavaScript value), `parseTree` (JSONC string to AST), and `stripComments` (remove comments to produce valid JSON). All APIs return Effect values, enabling typed error handling and composition with other Effect-based code.
 
 **Key Design Principles:**
 
@@ -66,11 +60,7 @@ Effect values, enabling typed error handling and composition with other Effect-b
 
 ## Current State
 
-All implementation phases complete. GitHub Issues #1-#9 all closed.
-
-- **Tests:** 207 passing
-- **Coverage:** ~89% statements, ~82% branches, ~99% functions
-- **Branch:** `feat/implementation` (pushed, ready for PR)
+All implementation phases complete, including the tight node span fix for byte-minimal in-place edits (issue #62). See `src/index.test.ts` for the full test suite covering all modules.
 
 ### Source Structure
 
@@ -86,7 +76,7 @@ src/
   format.ts              # format, modify, applyEdits, formatAndApply
   equality.ts            # equals, equalsValue -- semantic JSONC comparison
   index.ts               # barrel exports
-  index.test.ts          # 207 tests covering all modules
+  index.test.ts          # tests covering all modules
 ```
 
 ### Component Summary
@@ -232,25 +222,21 @@ See individual design docs for detailed component documentation.
 
 ### Key Architectural Decisions
 
-1. **String literals for token types** -- Self-documenting debug output, natural JSON serialization,
-   readable test assertions. See [effect-patterns.md](effect-patterns.md) for Schema.Literal usage.
+1. **String literals for token types** -- Self-documenting debug output, natural JSON serialization, readable test assertions. See [effect-patterns.md](effect-patterns.md) for Schema.Literal usage.
 
-2. **Data.TaggedError with *Base exports** -- Required for api-extractor DTS compatibility. See
-   [error-types.md](error-types.md) for the pattern.
+2. **Data.TaggedError with *Base exports** -- Required for api-extractor DTS compatibility. See [error-types.md](error-types.md) for the pattern.
 
-3. **Schema.Class for data types** -- Structural equality, validation, and composable Schema
-   pipelines. See [effect-patterns.md](effect-patterns.md).
+3. **Schema.Class for data types** -- Structural equality, validation and composable Schema pipelines. See [effect-patterns.md](effect-patterns.md).
 
-4. **Error accumulation** -- Parser collects all errors rather than stopping at the first, similar
-   to IDE diagnostic reporting. See [parser.md](parser.md).
+4. **Error accumulation** -- Parser collects all errors rather than stopping at the first, similar to IDE diagnostic reporting. See [parser.md](parser.md).
 
-5. **allowTrailingComma defaults to true** -- Unlike Microsoft's jsonc-parser (defaults false),
-   because JSONC config files commonly use trailing commas.
+5. **allowTrailingComma defaults to true** -- Unlike Microsoft's jsonc-parser (defaults false), because JSONC config files commonly use trailing commas.
 
-6. **Pure functions, not services** -- Parsing is synchronous and stateless, so Effect services
-   would add unnecessary complexity. All public APIs use `Effect.sync` wrapping.
+6. **Pure functions, not services** -- Parsing is synchronous and stateless, so Effect services would add unnecessary complexity. All public APIs use `Effect.sync` wrapping.
 
 7. **Platform independent** -- No `node:` imports anywhere, enabling browser and edge runtime usage.
+
+8. **Tight node spans** -- `JsoncNode.offset`/`length` end at the node's last token, excluding trailing whitespace and comments, so `modify` can produce byte-minimal edits. See [parser.md](parser.md) and [formatting.md](formatting.md).
 
 ### Design Patterns
 
@@ -279,8 +265,7 @@ This is a single-package library, not a layered application. The architecture is
 - JavaScript values (when `buildTree=false`)
 - AST nodes as `JsoncNode` (when `buildTree=true`)
 
-**Effect layer:** Public API functions (`parse`, `parseTree`, `stripComments`) wrap the synchronous
-internals in `Effect.sync` and convert error arrays to `Effect.fail(JsoncParseError)`.
+**Effect layer:** Public API functions (`parse`, `parseTree`, `stripComments`) wrap the synchronous internals in `Effect.sync` and convert error arrays to `Effect.fail(JsoncParseError)`.
 
 ### Build Pipeline
 
@@ -321,8 +306,10 @@ Turbo orchestrates builds with task dependencies: `typecheck` depends on `build`
 
 ### Parse Tree Flow (JSONC String to AST)
 
+Node spans are tight: each `offset`/`length` ends at the node's last token, excluding trailing whitespace and comments (see [parser.md](parser.md)).
+
 ```text
-"{ \"key\": 42 }"
+'{ "key": 42 }'
        |
        v
   parseObjectTree()
@@ -330,11 +317,11 @@ Turbo orchestrates builds with task dependencies: `typecheck` depends on `build`
        v
   JsoncNode {
     type: "object",
-    offset: 0, length: 16,
+    offset: 0, length: 13,          // "{ \"key\": 42 }" — ends at "}"
     children: [
       JsoncNode {
         type: "property",
-        offset: 2, length: 12,
+        offset: 2, length: 9,       // "\"key\": 42" — ends at value's end
         colonOffset: 7,
         children: [
           JsoncNode { type: "string", value: "key", offset: 2, length: 5 },
@@ -348,23 +335,22 @@ Turbo orchestrates builds with task dependencies: `typecheck` depends on `build`
   Option.some(node) wrapped in Effect.succeed
 ```
 
-See [scanner.md](scanner.md) for token type details and [parser.md](parser.md) for the full
-parsing pipeline.
+See [scanner.md](scanner.md) for token type details and [parser.md](parser.md) for the full parsing pipeline.
 
 ---
 
 ## Testing Strategy
 
-207 tests organized into suites covering all modules:
+Tests are organized into suites covering all modules (see `src/index.test.ts`):
 
 - **Error types** -- `_tag` values, message formatting, structural equality
 - **Schema definitions** -- Schema.Class construction, defaults, recursive structure
 - **Scanner** -- All token types, escape sequences, unicode, comments, numbers, errors
-- **Parser** -- parse/parseTree for all value types, error accumulation, options
-- **Schema Integration** (14 tests) -- Round-trip, custom options, composed schemas
-- **AST Navigation** (11 tests) -- Path navigation, offset lookup, value reconstruction
-- **Visitor/Stream** (13 tests) -- Event emission, filtering, error events
-- **Formatting/Modification** (10 tests) -- Format, range format, modify, applyEdits
+- **Parser** -- parse/parseTree for all value types, error accumulation, options, tight node spans
+- **Schema Integration** -- Round-trip, custom options, composed schemas
+- **AST Navigation** -- Path navigation, offset lookup, value reconstruction
+- **Visitor/Stream** -- Event emission, filtering, error events
+- **Formatting/Modification** -- Format, range format, modify, applyEdits, byte-minimal edits
 
 **Configuration:**
 
@@ -387,7 +373,7 @@ parsing pipeline.
 **Component Design Docs:**
 
 - [Scanner](scanner.md) -- Lexer implementation and token types
-- [Parser](parser.md) -- Recursive descent parser, error accumulation
+- [Parser](parser.md) -- Recursive descent parser, error accumulation, tight node spans
 - [Schema Integration](schema-integration.md) -- transformOrFail pipelines
 - [AST Navigation](ast-navigation.md) -- findNode, findNodeAtOffset, getNodePath, getNodeValue
 - [Visitor](visitor.md) -- SAX-style event stream API

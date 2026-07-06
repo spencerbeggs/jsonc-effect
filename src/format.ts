@@ -396,9 +396,22 @@ function modifyImpl(
 	const scanner = createScanner(text, true);
 	let currentToken = scanner.scan();
 
-	function skipValue(): void {
+	// Tight end-of-token offset for the CURRENT token. Because this scanner is
+	// created with ignoreTrivia=true, scan() silently skips whitespace when
+	// advancing — so getTokenOffset() *after* advancing gives the start of the
+	// NEXT token, past any trailing trivia, not the end of the token we just
+	// left. Capture this value before advancing (see issue #62).
+	function tokenEnd(): number {
+		return scanner.getTokenOffset() + scanner.getTokenLength();
+	}
+
+	// Skips over the value starting at currentToken and returns the tight end
+	// offset (excluding trailing whitespace/comments) of the last token
+	// belonging to that value.
+	function skipValue(): number {
 		switch (currentToken) {
 			case "OpenBrace": {
+				let end = tokenEnd();
 				currentToken = scanner.scan();
 				let first = true;
 				while (currentToken !== "CloseBrace" && currentToken !== "EOF") {
@@ -409,36 +422,42 @@ function modifyImpl(
 						currentToken = scanner.scan(); // skip key
 						if (currentToken === "Colon") {
 							currentToken = scanner.scan(); // skip colon
-							skipValue(); // skip value
+							end = skipValue(); // skip value
 						}
 					} else {
+						end = tokenEnd();
 						currentToken = scanner.scan();
 					}
 					first = false;
 				}
 				if (currentToken === "CloseBrace") {
+					end = tokenEnd();
 					currentToken = scanner.scan();
 				}
-				break;
+				return end;
 			}
 			case "OpenBracket": {
+				let end = tokenEnd();
 				currentToken = scanner.scan();
 				let first = true;
 				while (currentToken !== "CloseBracket" && currentToken !== "EOF") {
 					if (!first && currentToken === "Comma") {
 						currentToken = scanner.scan();
 					}
-					skipValue();
+					end = skipValue();
 					first = false;
 				}
 				if (currentToken === "CloseBracket") {
+					end = tokenEnd();
 					currentToken = scanner.scan();
 				}
-				break;
+				return end;
 			}
-			default:
+			default: {
+				const end = tokenEnd();
 				currentToken = scanner.scan();
-				break;
+				return end;
+			}
 		}
 	}
 
@@ -472,8 +491,7 @@ function modifyImpl(
 							// This is our target
 							const valueStart = scanner.getTokenOffset();
 							const prevEnd = valueStart;
-							skipValue();
-							const valueEnd = scanner.getTokenOffset();
+							const valueEnd = skipValue();
 
 							if (value === undefined) {
 								// Remove property — find the key start and handle commas
@@ -510,11 +528,11 @@ function modifyImpl(
 						}
 						break;
 					}
-					skipValue();
+					lastValueEnd = skipValue();
 				} else {
 					currentToken = scanner.scan();
+					lastValueEnd = scanner.getTokenOffset();
 				}
-				lastValueEnd = scanner.getTokenOffset();
 				isFirst = false;
 			}
 
@@ -543,8 +561,7 @@ function modifyImpl(
 				if (idx === segment) {
 					if (depth === path.length) {
 						const valueStart = scanner.getTokenOffset();
-						skipValue();
-						const valueEnd = scanner.getTokenOffset();
+						const valueEnd = skipValue();
 
 						if (value === undefined) {
 							// Remove element
@@ -561,8 +578,7 @@ function modifyImpl(
 					}
 					break;
 				}
-				skipValue();
-				lastEnd = scanner.getTokenOffset();
+				lastEnd = skipValue();
 				idx++;
 			}
 

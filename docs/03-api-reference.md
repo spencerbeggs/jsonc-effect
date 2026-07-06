@@ -1,4 +1,4 @@
-# API Reference
+# API reference
 
 ## Parser
 
@@ -10,7 +10,7 @@ Parse a JSONC string to a JavaScript value.
 
 ### `parseTree(text, options?)`
 
-Parse a JSONC string to an AST.
+Parse a JSONC string to an AST. Node spans are tight: each node's `offset` and `length` cover exactly the node's own text, excluding any trailing whitespace or comments before the next token.
 
 - **Returns:** `Effect<Option<JsoncNode>, JsoncParseError>`
 
@@ -28,12 +28,9 @@ Create a low-level token scanner.
 
 - **Returns:** `JsoncScanner`
 
-The scanner produces tokens of type `JsoncSyntaxKind`: `OpenBrace`,
-`CloseBrace`, `OpenBracket`, `CloseBracket`, `Comma`, `Colon`, `String`,
-`Number`, `True`, `False`, `Null`, `LineComment`, `BlockComment`,
-`LineBreak`, `Trivia`, `Unknown`, `EOF`.
+The scanner produces tokens of type `JsoncSyntaxKind`: `OpenBrace`, `CloseBrace`, `OpenBracket`, `CloseBracket`, `Comma`, `Colon`, `String`, `Number`, `True`, `False`, `Null`, `LineComment`, `BlockComment`, `LineBreak`, `Trivia`, `Unknown`, `EOF`.
 
-## Schema Integration
+## Schema integration
 
 ### `JsoncFromString`
 
@@ -51,10 +48,9 @@ Compose JSONC parsing with a target Schema for end-to-end typed parsing.
 
 - **Returns:** `Schema<A, string>`
 
-## AST Navigation
+## AST navigation
 
-All navigation functions support `Function.dual` (data-first and data-last
-calling conventions).
+All navigation functions support `Function.dual` (data-first and data-last calling conventions).
 
 ### `findNode(root, path)`
 
@@ -64,13 +60,13 @@ Find node at a JSON path.
 
 ### `findNodeAtOffset(root, offset)`
 
-Find innermost node at a character offset.
+Find innermost node at a character offset. Offsets that land in trailing whitespace or comments after a value resolve to the enclosing container, not the preceding value.
 
 - **Returns:** `Effect<Option<JsoncNode>>`
 
 ### `getNodePath(root, offset)`
 
-Get the JSON path to the node at a given offset.
+Get the JSON path to the node at a given offset. Uses the same offset resolution as `findNodeAtOffset`.
 
 - **Returns:** `Effect<Option<JsoncPath>>`
 
@@ -80,7 +76,7 @@ Reconstruct a JavaScript value from an AST node.
 
 - **Returns:** `Effect<unknown>`
 
-## Formatting and Modification
+## Formatting and modification
 
 ### `format(text, range?, options?)`
 
@@ -102,8 +98,7 @@ Format a JSONC document in one step.
 
 ### `modify(text, path, value, options?)`
 
-Compute edits to insert, replace, or remove a value at a JSON path (supports
-`Function.dual`).
+Compute edits to insert, replace, or remove a value at a JSON path (supports `Function.dual`). Edits are byte-minimal: replacing a value touches exactly the value's span, so surrounding whitespace, newlines and comments are preserved.
 
 - **Returns:** `Effect<JsoncEdit[], JsoncModificationError>`
 
@@ -111,9 +106,7 @@ Compute edits to insert, replace, or remove a value at a JSON path (supports
 
 ### `equals(self, that)`
 
-Compare two JSONC strings for semantic equality. Parses both strings and
-deep-compares the resulting values. Ignores comments, whitespace, formatting,
-and object key ordering. Array order is significant.
+Compare two JSONC strings for semantic equality. Parses both strings and deep-compares the resulting values. Ignores comments, whitespace, formatting and object key ordering. Array order is significant.
 
 Supports `Function.dual` (data-first and data-last).
 
@@ -121,8 +114,7 @@ Supports `Function.dual` (data-first and data-last).
 
 ### `equalsValue(self, value)`
 
-Compare a JSONC string against a JavaScript value. Parses the JSONC string and
-deep-compares against the provided value. Same comparison semantics as `equals`.
+Compare a JSONC string against a JavaScript value. Parses the JSONC string and deep-compares against the provided value. Same comparison semantics as `equals`.
 
 Supports `Function.dual` (data-first and data-last).
 
@@ -136,8 +128,7 @@ Stream of SAX-style visitor events.
 
 - **Returns:** `Stream<JsoncVisitorEvent>`
 
-Event types: `ObjectBegin`, `ObjectEnd`, `ObjectProperty`, `ArrayBegin`,
-`ArrayEnd`, `LiteralValue`, `Separator`, `Comment`, `Error`.
+Event types: `ObjectBegin`, `ObjectEnd`, `ObjectProperty`, `ArrayBegin`, `ArrayEnd`, `LiteralValue`, `Separator`, `Comment`, `Error`.
 
 ### `visitCollect(text, predicate, options?)`
 
@@ -149,7 +140,7 @@ Collect filtered visitor events into an array.
 
 | Type | Description |
 | --- | --- |
-| `JsoncNode` | AST node with type, offset, length, value, children |
+| `JsoncNode` | AST node with type, offset, length, value, children; spans are tight (no trailing trivia) |
 | `JsoncEdit` | Text edit: offset, length, content |
 | `JsoncRange` | Document range: offset, length |
 | `JsoncToken` | Scanner token: kind, value, offset, length |

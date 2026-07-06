@@ -1,10 +1,20 @@
-# jsonc-effect Documentation
+# jsonc-effect documentation
+
+Pure [Effect](https://effect.website) JSONC (JSON with Comments) parser with no external parser dependencies. Scanner, parser, AST and formatting are all implemented natively.
+
+## Install
+
+```bash
+npm install jsonc-effect effect
+# or
+pnpm add jsonc-effect effect
+```
 
 ## Guides
 
-- [Getting Started](./getting-started.md) -- installation, first example, core concepts
-- [API Reference](./api.md) -- all exports with signatures and descriptions
-- [Examples](./examples.md) -- real-world usage patterns
+- [Getting started](./01-getting-started.md) — installation, first example, core concepts
+- [Examples](./02-examples.md) — real-world usage patterns
+- [API reference](./03-api-reference.md) — all exports with signatures and descriptions
 
 ## Overview
 

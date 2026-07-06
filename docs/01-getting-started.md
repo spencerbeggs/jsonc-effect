@@ -1,9 +1,11 @@
-# Getting Started
+# Getting started
 
-## Installation
+## Install
 
 ```bash
 npm install jsonc-effect effect
+# or
+pnpm add jsonc-effect effect
 ```
 
 Both `jsonc-effect` and `effect` are required. The `effect` package is the sole runtime dependency.
@@ -93,5 +95,5 @@ const result = Effect.runSync(program)
 
 ## Next steps
 
-- [API Reference](./api.md) -- all exports with signatures
-- [Examples](./examples.md) -- real-world usage patterns
+- [Examples](./02-examples.md) -- real-world usage patterns
+- [API reference](./03-api-reference.md) -- all exports with signatures

@@ -318,6 +318,14 @@ function parseInternal(text: string, options: Partial<JsoncParseOptions>, buildT
 		}
 	}
 
+	// Tight end-of-token offset — captures where the CURRENT token ends,
+	// before scanNext() advances past any trailing trivia. Node lengths are
+	// computed from this value (not from the next token's offset) so spans
+	// never swallow trailing whitespace or comments (see issue #62).
+	function tokenEnd(): number {
+		return scanner.getTokenOffset() + scanner.getTokenLength();
+	}
+
 	function handleError(
 		code: JsoncParseErrorDetail["code"],
 		skipUntilAfter: JsoncSyntaxKind[] = [],
@@ -479,8 +487,9 @@ function parseInternal(text: string, options: Partial<JsoncParseOptions>, buildT
 					length: 0,
 					value: scanner.getTokenValue(),
 				};
+				const end = tokenEnd();
 				scanNext();
-				node.length = scanner.getTokenOffset() - node.offset;
+				node.length = end - node.offset;
 				return node as JsoncNode;
 			}
 			case "Number": {
@@ -490,8 +499,9 @@ function parseInternal(text: string, options: Partial<JsoncParseOptions>, buildT
 					length: 0,
 					value: Number.parseFloat(scanner.getTokenValue()),
 				};
+				const end = tokenEnd();
 				scanNext();
-				node.length = scanner.getTokenOffset() - node.offset;
+				node.length = end - node.offset;
 				return node as JsoncNode;
 			}
 			case "True": {
@@ -501,8 +511,9 @@ function parseInternal(text: string, options: Partial<JsoncParseOptions>, buildT
 					length: 0,
 					value: true,
 				};
+				const end = tokenEnd();
 				scanNext();
-				node.length = scanner.getTokenOffset() - node.offset;
+				node.length = end - node.offset;
 				return node as JsoncNode;
 			}
 			case "False": {
@@ -512,8 +523,9 @@ function parseInternal(text: string, options: Partial<JsoncParseOptions>, buildT
 					length: 0,
 					value: false,
 				};
+				const end = tokenEnd();
 				scanNext();
-				node.length = scanner.getTokenOffset() - node.offset;
+				node.length = end - node.offset;
 				return node as JsoncNode;
 			}
 			case "Null": {
@@ -523,8 +535,9 @@ function parseInternal(text: string, options: Partial<JsoncParseOptions>, buildT
 					length: 0,
 					value: null,
 				};
+				const end = tokenEnd();
 				scanNext();
-				node.length = scanner.getTokenOffset() - node.offset;
+				node.length = end - node.offset;
 				return node as JsoncNode;
 			}
 			default:
@@ -563,12 +576,15 @@ function parseInternal(text: string, options: Partial<JsoncParseOptions>, buildT
 			needsComma = true;
 		}
 
+		let end: number;
 		if (token() !== "CloseBracket") {
 			handleError("CloseBracketExpected");
+			end = scanner.getTokenOffset();
 		} else {
+			end = tokenEnd();
 			scanNext();
 		}
-		node.length = scanner.getTokenOffset() - node.offset;
+		node.length = end - node.offset;
 		return node as JsoncNode;
 	}
 
@@ -611,8 +627,9 @@ function parseInternal(text: string, options: Partial<JsoncParseOptions>, buildT
 				length: 0,
 				value: scanner.getTokenValue(),
 			};
+			const keyEnd = tokenEnd();
 			scanNext();
-			keyNode.length = scanner.getTokenOffset() - keyNode.offset;
+			keyNode.length = keyEnd - keyNode.offset;
 			(property.children as MutableJsoncNode[]).push(keyNode);
 
 			if (token() !== "Colon") {
@@ -627,20 +644,24 @@ function parseInternal(text: string, options: Partial<JsoncParseOptions>, buildT
 			const valueNode = parseValueTree();
 			if (valueNode) {
 				(property.children as MutableJsoncNode[]).push(valueNode as MutableJsoncNode);
+				property.length = valueNode.offset + valueNode.length - property.offset;
 			} else {
 				handleError("ValueExpected", [], ["CloseBrace", "Comma"]);
+				property.length = scanner.getTokenOffset() - property.offset;
 			}
-			property.length = scanner.getTokenOffset() - property.offset;
 			(node.children as MutableJsoncNode[]).push(property);
 			needsComma = true;
 		}
 
+		let end: number;
 		if (token() !== "CloseBrace") {
 			handleError("CloseBraceExpected");
+			end = scanner.getTokenOffset();
 		} else {
+			end = tokenEnd();
 			scanNext();
 		}
-		node.length = scanner.getTokenOffset() - node.offset;
+		node.length = end - node.offset;
 		return node as JsoncNode;
 	}
 

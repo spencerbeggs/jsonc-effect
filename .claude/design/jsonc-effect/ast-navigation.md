@@ -3,8 +3,8 @@ status: current
 module: jsonc-effect
 category: architecture
 created: 2026-03-12
-updated: 2026-03-13
-last-synced: 2026-03-13
+updated: 2026-07-06
+last-synced: 2026-07-06
 completeness: 95
 related:
   - architecture.md
@@ -29,9 +29,7 @@ Pipe-friendly traversal utilities for `JsoncNode` trees produced by `parseTree()
 
 ## Overview
 
-The AST navigation module (`ast.ts`) provides functions for traversing and querying the parse tree
-produced by `parseTree()`. All functions support `Function.dual` for both data-first and data-last
-calling conventions, making them composable in Effect pipelines.
+The AST navigation module (`ast.ts`) provides functions for traversing and querying the parse tree produced by `parseTree()`. All functions support `Function.dual` for both data-first and data-last calling conventions, making them composable in Effect pipelines.
 
 **When to reference this document:**
 
@@ -54,13 +52,12 @@ calling conventions, making them composable in Effect pipelines.
 
 ### Implementation Details
 
-- All dual functions use `Function.dual(2, ...)` enabling both `findNode(root, path)` and
-  `pipe(root, findNode(path))`
+- All dual functions use `Function.dual(2, ...)` enabling both `findNode(root, path)` and `pipe(root, findNode(path))`
 - `findNode` navigates property names (strings) and array indices (numbers) in the path
 - `findNodeAtOffset` performs depth-first narrowing to the most specific node covering the offset
 - `getNodePath` computes the JSON path by walking the AST to find the node at the given offset
-- `getNodeValue` recursively evaluates the AST subtree, reconstructing objects, arrays, and
-  primitive values
+- `getNodeValue` recursively evaluates the AST subtree, reconstructing objects, arrays and primitive values
+- Offset-based lookups honor the tight span contract (see [parser.md](parser.md)): node spans exclude trailing whitespace and comments, so an offset in the trivia between a value and its container's closing `}`/`]` resolves to the container, not the preceding value
 
 ### Usage Example
 
@@ -92,19 +89,16 @@ const value = pipe(
 
 ### Function.dual
 
-`Function.dual` enables both calling conventions without maintaining separate implementations.
-The arity argument (2) tells Effect how many arguments the data-first form expects. This is
-idiomatic Effect-TS and allows AST navigation to integrate naturally with `pipe` and `Effect.gen`.
+`Function.dual` enables both calling conventions without maintaining separate implementations. The arity argument (2) tells Effect how many arguments the data-first form expects. This is idiomatic Effect-TS and allows AST navigation to integrate naturally with `pipe` and `Effect.gen`.
 
 ### Option.Option Return Types
 
-Navigation functions return `Option<JsoncNode>` rather than throwing or returning `undefined`,
-making the "not found" case explicit and composable with Effect's `Option` combinators.
+Navigation functions return `Option<JsoncNode>` rather than throwing or returning `undefined`, making the "not found" case explicit and composable with Effect's `Option` combinators.
 
 ---
 
 ## Related Documentation
 
 - [Architecture](architecture.md) -- System overview and AST navigation pipeline diagram
-- [Parser](parser.md) -- parseTree() that produces the AST
+- [Parser](parser.md) -- parseTree() that produces the AST and the tight span contract
 - [Effect Patterns](effect-patterns.md) -- Function.dual pattern details
