@@ -1,5 +1,11 @@
 # jsonc-effect
 
+> [!CAUTION]
+> **This package is deprecated and no longer maintained.**
+> All functionality has been migrated to [`@effected/jsonc`](https://www.npmjs.com/package/@effected/jsonc)
+> Source code live in the [Effected monorepo](https://github.com/spencerbeggs/effected).
+> No further releases, fixes or security patches will be published here.
+
 [![npm](https://img.shields.io/npm/v/jsonc-effect?label=npm&color=cb3837)](https://www.npmjs.com/package/jsonc-effect)
 [![License: MIT](https://img.shields.io/badge/License-MIT-4caf50.svg)](https://opensource.org/licenses/MIT)
 [![Node.js %3E%3D24.11.0](https://img.shields.io/badge/Node.js-%3E%3D24.11.0-5fa04e.svg)](https://nodejs.org/)
